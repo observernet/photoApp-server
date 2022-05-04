@@ -1,0 +1,8 @@
+# Ignore Directory
+config/
+log/
+
+# Ignore File
+*.bak
+encypt.go
+
