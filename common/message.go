@@ -27,6 +27,12 @@ func GetErrorMessageKOR(code int) string {
 		case 8007:	return "인증번호가 만료되었습니다"
 		case 8008:	return "올바르지 않은 인증코드입니다"
 		case 8009:	return "최대 인증 횟수를 초과하였습니다"
+		case 8010:	return "올바르지 않은 계정 또는 비밀번호 입니다"
+		case 8011:	return "로그인 실패 횟수가 초과 되었습니다"
+		case 8012:	return "정책 위반으로 계정이 정지되었습니다"
+		case 8013:	return "올바르지 않은 계정 상태입니다"
+		case 8014:	return "로그인 정보가 올바르지 않습니다"
+		case 8015:	return "로그인 정보가 존재하지 않습니다"
 
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"

@@ -2,9 +2,12 @@ package common
 
 import (
 	"time"
+	"errors"
 	"math/rand"
 
 	"photoApp-server/global"
+
+	"database/sql"
 )
 
 func GetPhoneNumber(ncode string, phone string) string {
@@ -54,6 +57,46 @@ func GetCodeKey(length int) string {
 	}
 
 	return code
+}
+
+func GetRowsResult(rows *sql.Rows, limit int) ([]map[string]interface{}, error) {
+
+	if rows == nil {
+		return nil, errors.New("Rows is null")
+	}
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]interface{}, len(cols))
+	dataPtr := make([]interface{}, len(cols))
+	for i, _ := range data {
+		dataPtr[i] = &data[i]
+	}
+
+	var count int
+	var results []map[string]interface{}
+	for rows.Next() {	
+		err = rows.Scan(dataPtr...)
+		if err != nil {
+			return nil, err
+		}
+
+		result := make(map[string]interface{})
+		for i, item := range dataPtr {
+			result[cols[i]] = item.(*interface{})
+		}
+		results = append(results, result)
+
+		count = count + 1
+		if limit > 0 && count >= limit {
+			break
+		}
+	}
+
+	return results, nil
 }
 
 func SendCode_Phone(ncode string, phone string, code string) {

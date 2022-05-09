@@ -3,7 +3,9 @@ package common
 import (
 	"fmt"
 	"net"
+	"errors"
 	"strconv"
+	"encoding/json"
 
 	"photoApp-server/global"
 )
@@ -94,7 +96,20 @@ func _InquiryCallToKASConn(trid string, userkey string, sendData string) (string
 		break
 	}
 
-	return string(bBuff), nil
+	var res map[string]interface{}
+	if err = json.Unmarshal(bBuff, &res); err != nil {
+		return "", err
+	}
+
+	if res["success"] == nil || res["msg"] == nil {
+		return "", errors.New("Incorrect KASConn result")
+	}
+
+	if res["success"].(bool) != true {
+		return "", errors.New(res["msg"].(string))
+	}
+
+	return res["msg"].(string), nil
 }
 
 func _TransactToKASConn(trid string, userkey string, sendData string) (string, error) {

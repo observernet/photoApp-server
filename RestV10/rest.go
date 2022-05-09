@@ -65,6 +65,9 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 	// switch request
 	resBody := make(map[string]interface{})
 	switch reqData["trid"] {
+		case "login_info": res_code = TR_LoginInfo(db, rds, reqData, resBody)
+		case "login": res_code = TR_Login(db, rds, reqData, resBody)
+		case "logout": res_code = TR_Logout(db, rds, reqData, resBody)
 		case "send_code": res_code = TR_SendCode(db, rds, reqData, resBody)
 		case "check_code": res_code = TR_CheckCode(db, rds, reqData, resBody)
 		case "join": res_code = TR_Join(db, rds, reqData, resBody)

@@ -64,6 +64,9 @@ const SendCodeExpireSecs int = 120
 const SendCodeMaxErrors int = 5
 const SendCodeBlockSecs int = 86400
 
+const LoginMaxErrors int = 5
+const LoginBlockSecs int = 86400
+
 // Global Variable
 var Config ServerConfig
 var FLog *log.Logger

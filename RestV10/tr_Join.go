@@ -230,20 +230,19 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 	var err error
 	var tx *sql.Tx
-	var userkey string
+	var userkey, address string
 
 	// 유저키를 가져온다
 	if userkey, err = _JoinGetUserKey(db); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
-	global.FLog.Println(userkey)
 
 	// 지갑주소를 생성해서 가져온다
-	cert_info := global.Config.Service.AccountPool
-	//common.InquiryCallToKASConn(userkey)
-
-	address := "0x2Ff9EDC9faCc1738ff1563cA425D219D810078e7"
+	if address, err = common.KAS_CreateAccount(userkey); err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
 
 	// 트랜잭션 시작
 	tx, err = db.Begin()
@@ -278,7 +277,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 					 " (ADDRESS, WALLET_TYPE, CERT_INFO, USER_KEY, UPDATE_TIME) " +
 					 " VALUES " +
 					 " (:1, 'K', :2, :3, sysdate) ",
-					 address, cert_info, userkey)					 
+					 address, global.Config.Service.AccountPool, userkey)					 
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -293,6 +292,13 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 	// 여기까지 회원가입 처리
 	//////////////////////////////////////////
+
+	// 캐시 정보는 삭제한다
+	rkey := "Join:" + g_phoneNumber
+	if _, err = rds.Do("DEL", rkey); err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
 
 	// 응답값을 세팅한다
 	resBody["userkey"] = userkey
