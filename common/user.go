@@ -1,10 +1,11 @@
 package common
 
 import (
+	"time"
 	"errors"
 	"encoding/json"
 
-	//"photoApp-server/global"
+	"photoApp-server/global"
 
 	"database/sql"
 	"github.com/gomodule/redigo/redis"
@@ -13,7 +14,7 @@ import (
 func User_GetInfo(rds redis.Conn, userkey string) (map[string]interface{}, error) {
 
 	// Redis에서 사용자 정보를 가져온다
-	rkey := "User:Info:" + userkey
+	rkey := global.Config.Service.Name + ":UserInfo:" + userkey
 	rvalue, err := redis.String(rds.Do("GET", rkey))
 	if err != nil { return nil, err }
 
@@ -31,9 +32,10 @@ func User_Login(db *sql.DB, rds redis.Conn, userkey string) (string, error) {
 	var rows *sql.Rows
 	var query string
 	var mapUser, mapWallet []map[string]interface{}
+	curtime := time.Now().UnixNano() / 1000000
 
 	// 사용자 정보를 가져온다
-	query = "SELECT NCODE, PHONE, EMAIL, NAME, PHOTO, LOGIN_PASSWD, CERT_PASSWD, USER_LEVEL, STATUS, ERROR_COUNT FROM USER_INFO WHERE USER_KEY = :1"
+	query = "SELECT * FROM USER_INFO WHERE USER_KEY = :1"
 	if stmt, err = db.Prepare(query); err != nil { return "", err }
 	if rows, err = stmt.Query(userkey); err != nil { return "", err }
 	if mapUser, err = GetRowsResult(rows, 1); err != nil { return "", err }
@@ -49,12 +51,13 @@ func User_Login(db *sql.DB, rds redis.Conn, userkey string) (string, error) {
 
 	// redis에 올릴 정보를 생성한다
 	mapRedis := make(map[string]interface{})
+	mapUser[0]["logintime"] = curtime
 	mapRedis["info"] = mapUser[0]
 	mapRedis["wallet"] = mapWallet
 
 	// Redis에 데이타를 올린다
 	jsonStr, _ := json.Marshal(mapRedis)
-	rkey := "User:Info:" + userkey
+	rkey := global.Config.Service.Name + ":UserInfo:" + userkey
 	if _, err = rds.Do("SET", rkey, jsonStr); err != nil { return "", err }
 
 	return rkey, nil
@@ -63,7 +66,7 @@ func User_Login(db *sql.DB, rds redis.Conn, userkey string) (string, error) {
 func User_Logout(rds redis.Conn, userkey string) error {
 
 	// Redis에서 사용자 정보를 삭제한다
-	rkey := "User:Info:" + userkey
+	rkey := global.Config.Service.Name + ":UserInfo:" + userkey
 	if _, err := rds.Do("DEL", rkey); err != nil { return err }
 
 	return nil

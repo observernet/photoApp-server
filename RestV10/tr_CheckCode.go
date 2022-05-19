@@ -40,9 +40,9 @@ func TR_CheckCode(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, re
 
 	// 전송한 코드 정보를 가져온다
 	if reqBody["type"].(string) == "phone" {
-		rkey = "SendCode:" + common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
+		rkey = global.Config.Service.Name + ":SendCode:" + common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 	} else {
-		rkey = "SendCode:" + reqBody["email"].(string)
+		rkey = global.Config.Service.Name + ":SendCode:" + reqBody["email"].(string)
 	}
 	if rvalue, err = redis.String(rds.Do("GET", rkey)); err != nil {
 		if err != redis.ErrNil {

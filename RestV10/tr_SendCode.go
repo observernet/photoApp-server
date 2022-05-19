@@ -46,9 +46,9 @@ func TR_SendCode(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, res
 
 	// 정보를 기록할 Redis키를 결정한다
 	if reqBody["type"].(string) == "phone" {
-		rkey = "SendCode:" + common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
+		rkey = global.Config.Service.Name + ":SendCode:" + common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 	} else {
-		rkey = "SendCode:" + reqBody["email"].(string)
+		rkey = global.Config.Service.Name + ":SendCode:" + reqBody["email"].(string)
 	}
 
 	// 코드 정보를 기록한다

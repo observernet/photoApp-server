@@ -4,10 +4,12 @@ import (
 	"time"
 	"errors"
 	"math/rand"
+	"encoding/json"
 
 	"photoApp-server/global"
 
 	"database/sql"
+	"github.com/gomodule/redigo/redis"
 )
 
 func GetPhoneNumber(ncode string, phone string) string {
@@ -57,6 +59,20 @@ func GetCodeKey(length int) string {
 	}
 
 	return code
+}
+
+func GetAdminVar(rds redis.Conn) (global.AdminConfig, error) {
+
+	admVar := global.AdminConfig{}
+	
+	rkey := global.Config.Service.Name + ":AdminVar"
+	rvalue, err := redis.String(rds.Do("GET", rkey))
+	if err != nil { return admVar, err }
+
+	err = json.Unmarshal([]byte(rvalue), &admVar)
+	if err != nil { return admVar, err }
+
+	return admVar, nil
 }
 
 func GetRowsResult(rows *sql.Rows, limit int) ([]map[string]interface{}, error) {

@@ -18,9 +18,9 @@ func GetErrorMessageKOR(code int) string {
 	switch code {
 		case 0: 	return "정상처리"
 
-		case 8001:	return "이미 가입된 휴대번호입니다"
-		case 8002:	return "존재하지 않는 휴대번호입니다"
-		case 8003:	return "이미 가입된 이메일입니다"
+		case 8001:	return "이미 가입된 휴대전화번호입니다"
+		case 8002:	return "존재하지 않는 휴대전화번호입니다"
+		case 8003:	return "이미 등록된 이메일입니다"
 		case 8004:	return "존재하지 않는 이메일입니다"
 		case 8005:	return "인증 실패로 인해 인증이 제한되었습니다"
 		case 8006:	return "인증 요청 정보가 존재하지 않습니다"
@@ -33,6 +33,9 @@ func GetErrorMessageKOR(code int) string {
 		case 8013:	return "올바르지 않은 계정 상태입니다"
 		case 8014:	return "로그인 정보가 올바르지 않습니다"
 		case 8015:	return "로그인 정보가 존재하지 않습니다"
+		case 8016:	return "계정 정보가 존재하지 않습니다"
+		case 8017:	return "해당 휴대전화번호로 등록된 이메일이 없습니다"
+		case 8018:	return "해당 이메일로 등록된 휴대전화번호가 없습니다"
 
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"

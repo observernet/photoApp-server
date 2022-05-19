@@ -41,6 +41,11 @@ type ServerConfig struct {
 	} `json:"connector" binding:"required"`
 }
 
+// Admin Config
+type AdminConfig struct {
+	SnapInquiryTime		int64	`json:"snap_inquiry_time" binding:"required"`
+}
+
 // Header Struct
 type HeaderParameter struct {
 	XNonce     			int64 	`header:"X-PHOTOAPP-NONCE" binding:"required"`

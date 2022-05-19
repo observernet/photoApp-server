@@ -66,11 +66,13 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 	resBody := make(map[string]interface{})
 	switch reqData["trid"] {
 		case "login_info": res_code = TR_LoginInfo(db, rds, reqData, resBody)
+		case "version": res_code = TR_Version(db, rds, reqData, resBody)
 		case "login": res_code = TR_Login(db, rds, reqData, resBody)
 		case "logout": res_code = TR_Logout(db, rds, reqData, resBody)
-		case "send_code": res_code = TR_SendCode(db, rds, reqData, resBody)
-		case "check_code": res_code = TR_CheckCode(db, rds, reqData, resBody)
 		case "join": res_code = TR_Join(db, rds, reqData, resBody)
+		case "regist_email": res_code = TR_RegistEmail(db, rds, reqData, resBody)
+		case "search_user": res_code = TR_SearchUser(db, rds, reqData, resBody)
+		case "search_passwd": res_code = TR_SearchPasswd(db, rds, reqData, resBody)
 		default:
 			global.FLog.Println("정의되지 않은 TR:", reqData["trid"])
 			res_code = 9004

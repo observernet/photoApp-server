@@ -140,6 +140,7 @@ func TR_Login(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBod
 	}
 
 	// 응답값을 세팅한다
+	resBody["key"] = mapUser["info"].(map[string]interface{})["USER_KEY"].(string)
 	resBody["info"] = map[string]interface{} {
 							"ncode": mapUser["info"].(map[string]interface{})["NCODE"].(string),
 							"phone": mapUser["info"].(map[string]interface{})["PHONE"].(string),
@@ -148,12 +149,14 @@ func TR_Login(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBod
 							"photo": mapUser["info"].(map[string]interface{})["PHOTO"].(string),
 							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64)}
 
-	var wallets []map[string]interface{}
-	for _, wallet := range mapUser["wallet"].([]interface{}) {
-		wallets = append(wallets, map[string]interface{} {
-										"address": wallet.(map[string]interface{})["ADDRESS"].(string),
-										"type":    wallet.(map[string]interface{})["WALLET_TYPE"].(string),
-										"name":    wallet.(map[string]interface{})["NAME"].(string)})
+	wallets := make([]map[string]interface{}, 0)
+	if mapUser["wallet"] != nil {
+		for _, wallet := range mapUser["wallet"].([]interface{}) {
+			wallets = append(wallets, map[string]interface{} {
+											"address": wallet.(map[string]interface{})["ADDRESS"].(string),
+											"type":    wallet.(map[string]interface{})["WALLET_TYPE"].(string),
+											"name":    wallet.(map[string]interface{})["NAME"].(string)})
+		}
 	}
 	resBody["wallet"] = wallets
 

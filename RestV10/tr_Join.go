@@ -21,6 +21,7 @@ func TR_Join(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody
 	
 	// check input
 	if reqBody["step"] == nil || reqBody["ncode"] == nil || reqBody["phone"] == nil { return 9003 }
+	if len(reqBody["ncode"].(string)) == 0 || len(reqBody["phone"].(string)) == 0 { return 9003 }
 	if reqBody["ncode"] != nil && string(reqBody["ncode"].(string)[0]) == "+" { return 9003 }
 
 	// global variable
@@ -32,7 +33,7 @@ func TR_Join(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody
 	var joinInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	rkey = "Join:" + g_phoneNumber
+	rkey = global.Config.Service.Name + ":Join:" + g_phoneNumber
 	if rvalue, err = redis.String(rds.Do("GET", rkey)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
@@ -119,7 +120,7 @@ func _JoinStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// Redis에 캐싱값을 기록한다
-	rkey := "Join:" + g_phoneNumber
+	rkey := global.Config.Service.Name + ":Join:" + g_phoneNumber
 	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "force": reqBody["force"].(bool)}
 	jsonStr, _ := json.Marshal(mapV)
 	if _, err = rds.Do("SET", rkey, jsonStr); err != nil {
@@ -162,7 +163,7 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	var jsonStr []byte
 
 	// 코드를 체크한다
-	rkey = "Join:" + g_phoneNumber
+	rkey = global.Config.Service.Name + ":Join:" + g_phoneNumber
 	if reqBody["code"].(string) != joinInfo["code"].(string) {
 
 		errorCount := (int)(joinInfo["errcnt"].(float64)) + 1
@@ -252,7 +253,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 	defer tx.Rollback()
 
-	// 강제처리라면, 이전의 전화번호를 지워준다
+	// 강제처리라면, 이전의 전화번호는 해지처리한다
 	if joinInfo["force"] != nil && joinInfo["force"].(bool) == true {
 		_, err = tx.Exec("UPDATE USER_INFO SET STATUS = 'C', CLOSE_TIME = sysdate, UPDATE_TIME = sysdate WHERE NCODE = :1 and PHONE = :2", reqBody["ncode"].(string), reqBody["phone"].(string))
 		if err != nil {
@@ -294,7 +295,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	//////////////////////////////////////////
 
 	// 캐시 정보는 삭제한다
-	rkey := "Join:" + g_phoneNumber
+	rkey := global.Config.Service.Name + ":Join:" + g_phoneNumber
 	if _, err = rds.Do("DEL", rkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
