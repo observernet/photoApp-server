@@ -16,7 +16,7 @@ import (
 var g_search_curtime int64
 var g_search_rkey string
 
-func TR_SearchUser(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_SearchUser(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	

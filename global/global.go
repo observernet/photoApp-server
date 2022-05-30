@@ -43,7 +43,17 @@ type ServerConfig struct {
 
 // Admin Config
 type AdminConfig struct {
-	SnapInquiryTime		int64	`json:"snap_inquiry_time" binding:"required"`
+	Snap struct {
+		Interval		int64	`json:"interval" binding:"required"`
+		CheckTime		int64	`json:"check_time" binding:"required"`
+		CheckLange		float64	`json:"check_lange" binding:"required"`
+	} `json:"snap" binding:"required"`
+
+	Label struct {
+		Inquiry			int64	`json:"inquiry" binding:"required"`
+		MaxPerSnap		int64	`json:"max_per_snap" binding:"required"`
+		MaxTime			int64	`json:"max_time" binding:"required"`
+	} `json:"label" binding:"required"`
 }
 
 // Header Struct
@@ -69,8 +79,8 @@ const SendCodeExpireSecs int = 120
 const SendCodeMaxErrors int = 5
 const SendCodeBlockSecs int = 86400
 
-const LoginMaxErrors int = 5
-const LoginBlockSecs int = 86400
+//const LoginMaxErrors int = 5
+//const LoginBlockSecs int = 86400
 
 // Global Variable
 var Config ServerConfig

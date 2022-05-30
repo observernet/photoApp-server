@@ -14,7 +14,7 @@ import (
 
 var g_regist_curtime int64
 
-func TR_RegistEmail(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_RegistEmail(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	

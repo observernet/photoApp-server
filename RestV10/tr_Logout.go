@@ -11,7 +11,7 @@ import (
 // ReqData - ncode: 국가코드
 //         - phone: 핸드폰
 // ResData - nodata: 리턴정보 없음
-func TR_Logout(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_Logout(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	key := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})

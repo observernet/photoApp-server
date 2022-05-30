@@ -35,7 +35,7 @@ func User_Login(db *sql.DB, rds redis.Conn, userkey string) (string, error) {
 	curtime := time.Now().UnixNano() / 1000000
 
 	// 사용자 정보를 가져온다
-	query = "SELECT * FROM USER_INFO WHERE USER_KEY = :1"
+	query = "SELECT USER_KEY, NCODE, PHONE, NVL(EMAIL, ' ') EMAIL, NVL(NAME, ' ') NAME, NVL(PHOTO, ' ') PHOTO, PROMOTION, USER_LEVEL, STATUS, NVL(ABUSE_REASON, ' ') ABUSE_REASON, LABEL_COUNT, LAST_SNAP_TIME FROM USER_INFO WHERE USER_KEY = :1"
 	if stmt, err = db.Prepare(query); err != nil { return "", err }
 	if rows, err = stmt.Query(userkey); err != nil { return "", err }
 	if mapUser, err = GetRowsResult(rows, 1); err != nil { return "", err }
@@ -51,13 +51,20 @@ func User_Login(db *sql.DB, rds redis.Conn, userkey string) (string, error) {
 
 	// redis에 올릴 정보를 생성한다
 	mapRedis := make(map[string]interface{})
-	mapUser[0]["logintime"] = curtime
 	mapRedis["info"] = mapUser[0]
 	mapRedis["wallet"] = mapWallet
 
 	// Redis에 데이타를 올린다
 	jsonStr, _ := json.Marshal(mapRedis)
 	rkey := global.Config.Service.Name + ":UserInfo:" + userkey
+	if _, err = rds.Do("SET", rkey, jsonStr); err != nil { return "", err }
+
+	// runtime 데이타를 올린다
+	mapRedis = map[string]interface{} {"logintime": curtime}
+
+	// Redis에 데이타를 올린다
+	jsonStr, _ = json.Marshal(mapRedis)
+	rkey = global.Config.Service.Name + ":UserRun:" + userkey
 	if _, err = rds.Do("SET", rkey, jsonStr); err != nil { return "", err }
 
 	return rkey, nil

@@ -15,7 +15,7 @@ import (
 var g_curtime int64
 var g_phoneNumber string
 
-func TR_Join(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_Join(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
@@ -215,13 +215,15 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 //         - ncode: 국가코드
 //         - phone: 전화번호
 //         - name: 이름
-//         - loginpw: 로그인 비밀번호
+//         - promotion: true/false
 // ResData - userkey: 사용자 고유키
 func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["name"] == nil || len(reqBody["name"].(string)) <= 1 { return 9003 }
-	if reqBody["loginpw"] == nil || len(reqBody["loginpw"].(string)) <= 1 { return 9003 }
+
+	promotion := "Y"
+	if reqBody["promotion"] == nil || reqBody["promotion"].(bool) == false { promotion = "N" }
 	
 	// check cache
 	if joinInfo == nil || joinInfo["step"] == nil || joinInfo["step"].(string) != "2" { return 9902 }
@@ -264,10 +266,10 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 	// 회원가입을 처리한다
 	_, err = tx.Exec("INSERT INTO USER_INFO " +
-					 " (USER_KEY, NCODE, PHONE, NAME, LOGIN_PASSWD, USER_LEVEL, STATUS, CREATE_TIME, ERROR_COUNT, UPDATE_TIME) " +
+					 " (USER_KEY, NCODE, PHONE, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, UPDATE_TIME) " +
 					 " VALUES " +
 					 " (:1, :2, :3, :4, :5, 1, 'V', sysdate, 0, sysdate) ",
-					 userkey, reqBody["ncode"].(string), reqBody["phone"].(string), reqBody["name"].(string), reqBody["loginpw"].(string))
+					 userkey, reqBody["ncode"].(string), reqBody["phone"].(string), reqBody["name"].(string), promotion)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

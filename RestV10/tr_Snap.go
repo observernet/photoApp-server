@@ -13,7 +13,7 @@ import (
 // ResData - android: 안드로이드버전
 //         - ios: IOS버전
 //		   - web: 웹버전
-func TR_Version(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_Snap(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	//reqBody := reqData["body"].(map[string]interface{})
 
