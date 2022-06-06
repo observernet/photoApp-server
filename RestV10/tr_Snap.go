@@ -176,7 +176,7 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 
 	// 응답값을 세팅한다
 	resBody["upload_url"] = "https://photoapp.obsr-app.org/Snap/Upload"
-	resBody["snapkey"] = common.EncyptAES256(fmt.Sprintf("%s%06d", snapDate, snapIdx), reqBody["loginkey"].(string), userkey)
+	resBody["snapkey"] = common.CompressSnapData(fmt.Sprintf("%s%06d", snapDate, snapIdx), reqBody["loginkey"].(string), userkey)
 
 	return 0
 }
