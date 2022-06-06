@@ -9,13 +9,14 @@ import (
 	"photoApp-server/common"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
 var g_curtime int64
 var g_phoneNumber string
 
-func TR_Join(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	

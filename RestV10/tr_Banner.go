@@ -6,15 +6,13 @@ import (
 	"photoApp-server/global"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
 // ReqData - 
-// ResData - list: 배너리스트
-//               - title: 제목
-//               - image: 이미지
-//               - link: 이동링크
-func TR_Banner(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+// ResData - list: 배너리스트 {title: 제목, image: 이미지, link: 이동링크}
+func TR_Banner(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	//reqBody := reqData["body"].(map[string]interface{})
 

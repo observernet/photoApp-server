@@ -7,29 +7,39 @@ import (
 	"photoApp-server/common"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
-// ReqData - ncode: 국가코드
-//         - phone: 핸드폰
+// ReqData - loginkey: 로그인키
 // ResData - info: 사용자 정보
 //         - wallet: 지갑정보
 //         - reason: 정책위반사유
-func TR_LoginInfo(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
-	key := reqData["key"].(string)
+	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
 	
 	// check input
-	if reqBody["ncode"] == nil || reqBody["phone"] == nil { return 9003 }
-	if reqBody["ncode"] != nil && string(reqBody["ncode"].(string)[0]) == "+" { return 9003 }
+	if reqBody["loginkey"] == nil { return 9003 }
 	curtime := time.Now().UnixNano() / 1000000
 
 	var err error
 
-	// 로그인 정보를 가져온다
+	// 유저 정보를 가져온다
 	var mapUser map[string]interface{}
-	if mapUser, err = common.User_GetInfo(rds, key); err != nil {
+	if mapUser, err = common.User_GetInfo(rds, userkey); err != nil {
+		if err == redis.ErrNil {
+			return 8015
+		} else {
+			global.FLog.Println(err)
+			return 9901
+		}
+	}
+
+	// 로그인 정보를 가져온다
+	var mapLogin map[string]interface{}
+	if mapLogin, err = common.User_GetLoginInfo(rds, userkey); err != nil {
 		if err == redis.ErrNil {
 			return 8015
 		} else {
@@ -48,8 +58,8 @@ func TR_LoginInfo(db *sql.DB, rds redis.Conn, lang string, reqData map[string]in
 		}
 	}
 
-	// 로그인정보가 일치하는지 체크한다
-	if mapUser["info"].(map[string]interface{})["NCODE"].(string) != reqBody["ncode"].(string) || mapUser["info"].(map[string]interface{})["PHONE"].(string) != reqBody["phone"].(string) {
+	// 로그인정보가 일치하는지 체크
+	if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) {
 		return 8014
 	}
 

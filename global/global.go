@@ -46,7 +46,7 @@ type AdminConfig struct {
 	Snap struct {
 		Interval		int64	`json:"interval" binding:"required"`
 		CheckTime		int64	`json:"check_time" binding:"required"`
-		CheckLange		float64	`json:"check_lange" binding:"required"`
+		CheckRange		float64	`json:"check_range" binding:"required"`
 	} `json:"snap" binding:"required"`
 
 	Label struct {

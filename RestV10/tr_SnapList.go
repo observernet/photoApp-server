@@ -6,6 +6,7 @@ import (
 	"photoApp-server/global"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -13,7 +14,7 @@ import (
 // ResData - android: 안드로이드버전
 //         - ios: IOS버전
 //		   - web: 웹버전
-func TR_SnapList(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	//reqBody := reqData["body"].(map[string]interface{})
 

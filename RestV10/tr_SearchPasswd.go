@@ -9,13 +9,14 @@ import (
 	"photoApp-server/common"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
 var g_psearch_curtime int64
 var g_psearch_rkey string
 
-func TR_SearchPasswd(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_SearchPasswd(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	

@@ -37,6 +37,9 @@ func GetErrorMessageKOR(code int) string {
 		case 8017:	return "해당 휴대전화번호로 등록된 이메일이 없습니다"
 		case 8018:	return "해당 이메일로 등록된 휴대전화번호가 없습니다"
 
+		case 8101:	return "스냅 이력이 존재합니다"
+		case 8102:	return "먼저 스냅한 사용자가 존재합니다"
+
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"
 		case 9003:	return "요청 데이타 오류"

@@ -9,13 +9,14 @@ import (
 	"photoApp-server/common"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
 var g_login_curtime int64
 var g_login_rkey string
 
-func TR_Login(db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
@@ -229,7 +230,8 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	}
 
 	// 로그인을 처리한다
-	if _, err = common.User_Login(db, rds, loginInfo["userkey"].(string)); err != nil {
+	var loginkey string
+	if loginkey, err = common.User_Login(db, rds, loginInfo["userkey"].(string)); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -252,7 +254,8 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	if remain_snap_time < 0 { remain_snap_time = 0 }
 
 	// 응답값을 세팅한다
-	resBody["key"] = mapUser["info"].(map[string]interface{})["USER_KEY"].(string)
+	resBody["userkey"] = loginInfo["userkey"].(string)
+	resBody["loginkey"] = loginkey
 	resBody["info"] = map[string]interface{} {
 							"ncode": mapUser["info"].(map[string]interface{})["NCODE"].(string),
 							"phone": mapUser["info"].(map[string]interface{})["PHONE"].(string),

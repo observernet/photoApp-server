@@ -8,6 +8,7 @@ import (
 	"photoApp-server/common"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -23,7 +24,7 @@ import (
 //  - errcnt: 에러횟수
 //  - maxerr: 에러제한횟수
 
-func TR_CheckCode(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_CheckCode(c *gin.Context, db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	

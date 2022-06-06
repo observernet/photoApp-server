@@ -8,6 +8,7 @@ import (
 	"photoApp-server/common"
 
 	"database/sql"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -20,7 +21,7 @@ import (
 //  - expire: 만료시간 (초)
 //  - code: 인증코드 (6자리) - 임시, 오픈시 삭제할 예정임
 
-func TR_SendCode(db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
+func TR_SendCode(c *gin.Context, db *sql.DB, rds redis.Conn, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
