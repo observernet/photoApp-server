@@ -22,19 +22,8 @@ func TR_Logout(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 	var err error
 
 	// 유저 정보를 가져온다
-	//var mapUser map[string]interface{}
-	//if mapUser, err = common.User_GetInfo(rds, key); err != nil {
-	//	if err == redis.ErrNil {
-	//		return 8015
-	//	} else {
-	//		global.FLog.Println(err)
-	//		return 9901
-	//	}
-	//}
-
-	// 로그인 정보를 가져온다
-	var mapLogin map[string]interface{}
-	if mapLogin, err = common.User_GetLoginInfo(rds, userkey); err != nil {
+	var mapUser map[string]interface{}
+	if mapUser, err = common.User_GetInfo(rds, userkey, "login"); err != nil {
 		if err == redis.ErrNil {
 			return 8015
 		} else {
@@ -44,10 +33,10 @@ func TR_Logout(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 	}
 
 	// 로그인정보가 일치하는지 체크
-	if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) {
+	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) {
 		return 8014
 	}
-
+	
 	// 로그아웃을 처리한다
 	if err = common.User_Logout(rds, userkey); err != nil {
 		global.FLog.Println(err)

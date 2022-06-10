@@ -14,7 +14,7 @@ import (
 )
 
 var g_login_curtime int64
-var g_login_rkey string
+var g_login_hashkey string
 
 func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
@@ -30,9 +30,9 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	// Global 변수값을 세팅한다
 	g_login_curtime = time.Now().UnixNano() / 1000000
 	if reqBody["type"].(string) == "phone" {
-		g_login_rkey = global.Config.Service.Name + ":Login:" + common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
+		g_login_hashkey = common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 	} else {
-		g_login_rkey = global.Config.Service.Name + ":Login:" + reqBody["email"].(string)
+		g_login_hashkey = reqBody["email"].(string)
 	}
 
 	var err error
@@ -40,7 +40,7 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	var loginInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	if rvalue, err = redis.String(rds.Do("GET", g_login_rkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":LoginCode", g_login_hashkey)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -149,7 +149,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	// Redis에 캐싱값을 기록한다
 	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_login_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "userkey": userkey}
 	jsonStr, _ := json.Marshal(mapV)
-	if _, err = rds.Do("SET", g_login_rkey, jsonStr); err != nil {
+	if _, err = rds.Do("HSET", global.Config.Service.Name + ":LoginCode", g_login_hashkey, jsonStr); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -203,7 +203,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			loginInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(loginInfo)
-			if _, err = rds.Do("SET", g_login_rkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":LoginCode", g_login_hashkey, jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -216,7 +216,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
 			blockTime := g_login_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("SET", g_login_rkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":LoginCode", g_login_hashkey, rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -249,7 +249,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 		global.FLog.Println(err)
 		return 9901
 	}
-	remain_snap_time := g_login_curtime - (int64)(mapUser["info"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))
+	remain_snap_time := g_login_curtime - (int64)(mapUser["stat"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))
 	remain_snap_time = adminVar.Snap.Interval - remain_snap_time / 1000
 	if remain_snap_time < 0 { remain_snap_time = 0 }
 
@@ -264,24 +264,30 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 							"photo": mapUser["info"].(map[string]interface{})["PHOTO"].(string),
 							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64)}
 	
-	resBody["run"] = map[string]interface{} {
-							"labels": mapUser["info"].(map[string]interface{})["LABEL_COUNT"].(float64),
+	resBody["stat"] = map[string]interface{} {
+							"labels": mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 							"remain_snap_time": remain_snap_time,
-							"today_rp": 0}
+							"count": map[string]interface{} {
+								"snap": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64),
+								"snap_rp": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64) * adminVar.Reword.Snap,
+								"label": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64),
+								"label_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64) * adminVar.Reword.Label,
+								"label_etc": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64),
+								"label_etc_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64) * adminVar.Reword.LabelEtc}}
 
 	wallets := make([]map[string]interface{}, 0)
 	if mapUser["wallet"] != nil {
-		for _, wallet := range mapUser["wallet"].([]interface{}) {
+		for _, wallet := range mapUser["wallet"].([]map[string]interface{}) {
 			wallets = append(wallets, map[string]interface{} {
-											"address": wallet.(map[string]interface{})["ADDRESS"].(string),
-											"type":    wallet.(map[string]interface{})["WALLET_TYPE"].(string),
-											"name":    wallet.(map[string]interface{})["NAME"].(string)})
+											"address": wallet["ADDRESS"].(string),
+											"type":    wallet["WALLET_TYPE"].(string),
+											"name":    wallet["NAME"].(string)})
 		}
 	}
 	resBody["wallet"] = wallets
 
 	// 캐시 정보는 삭제한다
-	if _, err = rds.Do("DEL", g_login_rkey); err != nil {
+	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":LoginCode", g_login_hashkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

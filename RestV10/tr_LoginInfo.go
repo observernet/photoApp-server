@@ -37,17 +37,6 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 		}
 	}
 
-	// 로그인 정보를 가져온다
-	var mapLogin map[string]interface{}
-	if mapLogin, err = common.User_GetLoginInfo(rds, userkey); err != nil {
-		if err == redis.ErrNil {
-			return 8015
-		} else {
-			global.FLog.Println(err)
-			return 9901
-		}
-	}
-
 	// 계정 상태를 체크한다
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" {
 		if mapUser["info"].(map[string]interface{})["STATUS"].(string) == "A" {
@@ -59,7 +48,7 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 	}
 
 	// 로그인정보가 일치하는지 체크
-	if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) {
+	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) {
 		return 8014
 	}
 
@@ -69,7 +58,7 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 		global.FLog.Println(err)
 		return 9901
 	}
-	remain_snap_time := curtime - (int64)(mapUser["info"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))
+	remain_snap_time := curtime - (int64)(mapUser["stat"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))
 	remain_snap_time = adminVar.Snap.Interval - remain_snap_time / 1000
 	if remain_snap_time < 0 { remain_snap_time = 0 }
 
@@ -82,18 +71,24 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 			"photo": mapUser["info"].(map[string]interface{})["PHOTO"].(string),
 			"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64)}
 	
-	resBody["run"] = map[string]interface{} {		
-			"labels": mapUser["info"].(map[string]interface{})["LABEL_COUNT"].(float64),
-			"snap_remain": remain_snap_time,
-			"rp": 0}
+	resBody["stat"] = map[string]interface{} {
+		"labels": mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
+		"remain_snap_time": remain_snap_time,
+		"count": map[string]interface{} {
+			"snap": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64),
+			"snap_rp": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64) * adminVar.Reword.Snap,
+			"label": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64),
+			"label_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64) * adminVar.Reword.Label,
+			"label_etc": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64),
+			"label_etc_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64) * adminVar.Reword.LabelEtc}}
 
 	wallets := make([]map[string]interface{}, 0)
 	if mapUser["wallet"] != nil {
-		for _, wallet := range mapUser["wallet"].([]interface{}) {
-		wallets = append(wallets, map[string]interface{} {
-							"address": wallet.(map[string]interface{})["ADDRESS"].(string),
-							"type":    wallet.(map[string]interface{})["WALLET_TYPE"].(string),
-							"name":    wallet.(map[string]interface{})["NAME"].(string)})
+		for _, wallet := range mapUser["wallet"].([]map[string]interface{}) {
+			wallets = append(wallets, map[string]interface{} {
+											"address": wallet["ADDRESS"].(string),
+											"type":    wallet["WALLET_TYPE"].(string),
+											"name":    wallet["NAME"].(string)})
 		}
 	}
 	resBody["wallet"] = wallets

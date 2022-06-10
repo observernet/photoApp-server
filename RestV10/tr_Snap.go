@@ -52,17 +52,6 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 		}
 	}
 
-	// 로그인 정보를 가져온다
-	var mapLogin map[string]interface{}
-	if mapLogin, err = common.User_GetLoginInfo(rds, userkey); err != nil {
-		if err == redis.ErrNil {
-			return 8015
-		} else {
-			global.FLog.Println(err)
-			return 9901
-		}
-	}
-
 	// 관리자 정의변수를 가져온다
 	var adminVar global.AdminConfig
 	if adminVar, err = common.GetAdminVar(rds); err != nil {
@@ -72,10 +61,10 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 
 	// 계정 상태 및 로그인 정보를 체크한다
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" { return 8013 }
-	if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
+	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 이전 스냅타임을 체크한다
-	if (curtime - (int64)(mapUser["info"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))) < (adminVar.Snap.Interval * 1000) {
+	if (curtime - (int64)(mapUser["stat"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))) < (adminVar.Snap.Interval * 1000) {
 		return 8101
 	}
 
@@ -86,8 +75,8 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	
 	// 지역 최종 스냅시간을 가져온다
 	var checkLastSnapTime int64
-	rCheckkey := global.Config.Service.Name + ":SnapTime:" + check_key
-	rvalue, err := redis.String(rds.Do("GET", rCheckkey))
+	rCheckkey := global.Config.Service.Name + ":SnapTime"
+	rvalue, err := redis.String(rds.Do("HGET", rCheckkey, check_key))
 	if err != nil {
 		if err == redis.ErrNil {
 			checkLastSnapTime = 0
@@ -171,8 +160,8 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	//////////////////////////////////////////
 
 	// 캐쉬를 기록한다 기록한다
-	common.User_UpdateInfo(db, rds, userkey)
-	_, err = rds.Do("SET", rCheckkey, strconv.FormatInt(curtime, 10))
+	common.User_UpdateStat(db, rds, userkey)
+	_, err = rds.Do("HSET", rCheckkey, check_key, strconv.FormatInt(curtime, 10))
 
 	// 응답값을 세팅한다
 	resBody["upload_url"] = "https://photoapp.obsr-app.org/Snap/Upload"

@@ -30,12 +30,11 @@ func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	g_phoneNumber = common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 
 	var err error
-	var rkey, rvalue string
+	var rvalue string
 	var joinInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	rkey = global.Config.Service.Name + ":Join:" + g_phoneNumber
-	if rvalue, err = redis.String(rds.Do("GET", rkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":JoinCode", g_phoneNumber)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -121,10 +120,9 @@ func _JoinStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// Redis에 캐싱값을 기록한다
-	rkey := global.Config.Service.Name + ":Join:" + g_phoneNumber
 	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "force": reqBody["force"].(bool)}
 	jsonStr, _ := json.Marshal(mapV)
-	if _, err = rds.Do("SET", rkey, jsonStr); err != nil {
+	if _, err = rds.Do("HSET", global.Config.Service.Name + ":JoinCode", g_phoneNumber, jsonStr); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -164,7 +162,7 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	var jsonStr []byte
 
 	// 코드를 체크한다
-	rkey = global.Config.Service.Name + ":Join:" + g_phoneNumber
+	rkey = global.Config.Service.Name + ":JoinCode"
 	if reqBody["code"].(string) != joinInfo["code"].(string) {
 
 		errorCount := (int)(joinInfo["errcnt"].(float64)) + 1
@@ -172,7 +170,7 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			joinInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(joinInfo)
-			if _, err = rds.Do("SET", rkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", rkey, g_phoneNumber, jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -185,7 +183,7 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
 			blockTime := g_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("SET", rkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", rkey, g_phoneNumber, rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -201,7 +199,7 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	// Redis에 캐싱값을 기록한다
 	mapV := map[string]interface{} {"step": "2", "force": joinInfo["force"].(bool)}
 	jsonStr, _ = json.Marshal(mapV)
-	if _, err = rds.Do("SET", rkey, jsonStr); err != nil {
+	if _, err = rds.Do("HSET", rkey, g_phoneNumber, jsonStr); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -298,8 +296,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	//////////////////////////////////////////
 
 	// 캐시 정보는 삭제한다
-	rkey := global.Config.Service.Name + ":Join:" + g_phoneNumber
-	if _, err = rds.Do("DEL", rkey); err != nil {
+	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":JoinCode", g_phoneNumber); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

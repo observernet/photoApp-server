@@ -3,6 +3,7 @@ package common
 import (
 	"time"
 	"errors"
+	"strconv"
 	"math/rand"
 	"encoding/json"
 
@@ -10,6 +11,7 @@ import (
 
 	"database/sql"
 	"github.com/gomodule/redigo/redis"
+	"github.com/godror/godror"
 )
 
 func GetPhoneNumber(ncode string, phone string) string {
@@ -102,7 +104,8 @@ func GetRowsResult(rows *sql.Rows, limit int) ([]map[string]interface{}, error) 
 
 		result := make(map[string]interface{})
 		for i, item := range dataPtr {
-			result[cols[i]] = item.(*interface{})
+			val := item.(*interface{})
+			result[cols[i]] = *val
 		}
 		results = append(results, result)
 
@@ -113,6 +116,53 @@ func GetRowsResult(rows *sql.Rows, limit int) ([]map[string]interface{}, error) 
 	}
 
 	return results, nil
+}
+
+func GetSnapKey(key string) (string, string, error) {
+
+	if len(key) != 14 {
+		return "", "", errors.New("Not Snap Key")
+	}
+
+	snapkey, err := strconv.ParseInt(key, 10, 64)
+	if err != nil {
+		return "", "", err
+	}
+
+	snap_date := strconv.FormatInt(snapkey / 1000000, 10)
+	snap_idx := strconv.FormatInt(snapkey % 1000000, 10)
+
+	return snap_date, snap_idx, nil
+}
+
+func GetInt64FromNumber(num godror.Number) int64 {
+
+	val, err := num.Value()
+	if err != nil {
+		return 0
+	}
+
+	var ret int64
+	if ret, err = strconv.ParseInt(val.(string), 10, 64); err != nil {
+		return 0
+	}
+
+	return ret
+}
+
+func GetFloat64FromNumber(num godror.Number) float64 {
+
+	val, err := num.Value()
+	if err != nil {
+		return 0
+	}
+
+	var ret float64
+	if ret, err = strconv.ParseFloat(val.(string), 64); err != nil {
+		return 0
+	}
+
+	return ret
 }
 
 func SendCode_Phone(ncode string, phone string, code string) {

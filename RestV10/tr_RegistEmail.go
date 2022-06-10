@@ -28,12 +28,11 @@ func TR_RegistEmail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, req
 	g_regist_curtime = time.Now().UnixNano() / 1000000
 
 	var err error
-	var rkey, rvalue string
+	var rvalue string
 	var StepInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	rkey = global.Config.Service.Name + ":RegistEmail:" + reqBody["email"].(string)
-	if rvalue, err = redis.String(rds.Do("GET", rkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":RegistEmail", reqBody["email"].(string))); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -133,10 +132,9 @@ func _RegistEmailStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{
 	}
 
 	// Redis에 캐싱값을 기록한다
-	rkey := global.Config.Service.Name + ":RegistEmail:" + reqBody["email"].(string)
 	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_regist_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "proc": reqBody["proc"].(string), "userkey": reqBody["userkey"].(string)}
 	jsonStr, _ := json.Marshal(mapV)
-	if _, err = rds.Do("SET", rkey, jsonStr); err != nil {
+	if _, err = rds.Do("HSET", global.Config.Service.Name + ":RegistEmail", reqBody["email"].(string), jsonStr); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -178,7 +176,7 @@ func _RegistEmailStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{
 	var jsonStr []byte
 
 	// 코드를 체크한다
-	rkey = global.Config.Service.Name + ":RegistEmail:" + reqBody["email"].(string)
+	rkey = global.Config.Service.Name + ":RegistEmail"
 	if reqBody["code"].(string) != StepInfo["code"].(string) {
 
 		errorCount := (int)(StepInfo["errcnt"].(float64)) + 1
@@ -186,7 +184,7 @@ func _RegistEmailStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			StepInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(StepInfo)
-			if _, err = rds.Do("SET", rkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", rkey, reqBody["email"].(string), jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -199,7 +197,7 @@ func _RegistEmailStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
 			blockTime := g_regist_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("SET", rkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", rkey, reqBody["email"].(string), rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -225,7 +223,7 @@ func _RegistEmailStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{
 	}
 
 	// 캐시 정보는 삭제한다
-	if _, err = rds.Do("DEL", rkey); err != nil {
+	if _, err = rds.Do("HDEL", rkey, reqBody["email"].(string)); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

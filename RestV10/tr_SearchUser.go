@@ -15,7 +15,7 @@ import (
 )
 
 var g_search_curtime int64
-var g_search_rkey string
+var g_search_hashkey string
 
 func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
@@ -30,9 +30,9 @@ func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	// global variable
 	g_search_curtime = time.Now().UnixNano() / 1000000
 	if reqBody["type"].(string) == "phone" {
-		g_search_rkey = global.Config.Service.Name + ":SearchUser:" + common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
+		g_search_hashkey = common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 	} else {
-		g_search_rkey = global.Config.Service.Name + ":SearchUser:" + reqBody["email"].(string)
+		g_search_hashkey = reqBody["email"].(string)
 	}
 
 	var err error
@@ -40,7 +40,7 @@ func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	var StepInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	if rvalue, err = redis.String(rds.Do("GET", g_search_rkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":SearchUser", g_search_hashkey)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -100,7 +100,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// Redis에 캐싱값을 기록한다
 		mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_search_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "ncode": reqBody["ncode"].(string), "phone": reqBody["phone"].(string)}
 		jsonStr, _ := json.Marshal(mapV)
-		if _, err := rds.Do("SET", g_search_rkey, jsonStr); err != nil {
+		if _, err := rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, jsonStr); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -112,7 +112,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// Redis에 캐싱값을 기록한다
 		mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_search_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "email": reqBody["email"].(string)}
 		jsonStr, _ := json.Marshal(mapV)
-		if _, err := rds.Do("SET", g_search_rkey, jsonStr); err != nil {
+		if _, err := rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, jsonStr); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -163,7 +163,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			StepInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(StepInfo)
-			if _, err = rds.Do("SET", g_search_rkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -176,7 +176,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
 			blockTime := g_search_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("SET", g_search_rkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -242,7 +242,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	}
 
 	// 캐시 정보는 삭제한다
-	if _, err = rds.Do("DEL", g_search_rkey); err != nil {
+	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":SearchUser", g_search_hashkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

@@ -66,6 +66,10 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 	resBody := make(map[string]interface{})
 	switch reqData["trid"] {
 		case "login_info": res_code = TR_LoginInfo(c, db, rds, lang, reqData, resBody)
+		case "banner": res_code = TR_Banner(c, db, rds, lang, reqData, resBody)
+		case "snap_list": res_code = TR_SnapList(c, db, rds, lang, reqData, resBody)
+		case "label": res_code = TR_Label(c, db, rds, lang, reqData, resBody)
+		case "snap": res_code = TR_Snap(c, db, rds, lang, reqData, resBody)
 		case "version": res_code = TR_Version(c, db, rds, lang, reqData, resBody)
 		case "login": res_code = TR_Login(c, db, rds, lang, reqData, resBody)
 		case "logout": res_code = TR_Logout(c, db, rds, lang, reqData, resBody)
@@ -73,8 +77,6 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 		case "regist_email": res_code = TR_RegistEmail(c, db, rds, lang, reqData, resBody)
 		case "search_user": res_code = TR_SearchUser(c, db, rds, lang, reqData, resBody)
 		case "search_passwd": res_code = TR_SearchPasswd(c, db, rds, lang, reqData, resBody)
-		case "banner": res_code = TR_Banner(c, db, rds, lang, reqData, resBody)
-		case "snap": res_code = TR_Snap(c, db, rds, lang, reqData, resBody)
 		default:
 			global.FLog.Println("정의되지 않은 TR:", reqData["trid"])
 			res_code = 9004

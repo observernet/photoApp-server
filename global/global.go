@@ -50,10 +50,18 @@ type AdminConfig struct {
 	} `json:"snap" binding:"required"`
 
 	Label struct {
-		Inquiry			int64	`json:"inquiry" binding:"required"`
+		InquiryTime1	int64	`json:"inqtime1" binding:"required"`
+		InquiryTime2	int64	`json:"inqtime2" binding:"required"`
 		MaxPerSnap		int64	`json:"max_per_snap" binding:"required"`
 		MaxTime			int64	`json:"max_time" binding:"required"`
 	} `json:"label" binding:"required"`
+
+	Reword struct {
+		Snap			float64	`json:"snap" binding:"required"`
+		Label			float64	`json:"label" binding:"required"`
+		LabelEtc		float64	`json:"label_etc" binding:"required"`
+		OBSPPerDay		float64	`json:"obsp_per_day" binding:"required"`
+	} `json:"reword" binding:"required"`
 }
 
 // Header Struct
