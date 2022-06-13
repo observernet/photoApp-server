@@ -39,6 +39,13 @@ func GetErrorMessageKOR(code int) string {
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"
+		case 8103:	return "라벨이 부족합니다"
+		case 8104:	return "스냅키가 올바르지 않습니다"
+		case 8105:	return "본인의 스냅에 라벨할 수 없습니다"
+		case 8106:	return "신고된 스냅은 라벨할 수 없습니다"
+		case 8107:	return "스냅의 상태가 올바르지 않습니다"
+		case 8108:	return "이미 라벨한 스냅입니다"
+		case 8109:	return "스냅의 최대 라벨수를 초과하였습니다"
 
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"

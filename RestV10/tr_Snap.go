@@ -100,7 +100,6 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	//////////////////////////////////////////
 	// 스냅 등록 처리한다
 	var tx *sql.Tx
-	var stmt *sql.Stmt
 	var snapIdx int64
 	snapDate := time.Now().Format("20060102")
 
@@ -113,20 +112,11 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	defer tx.Rollback()
 
 	// 스냅키를 가져온다
-	query := "SELECT NVL(MAX(SNAP_IDX), 0) + 1 FROM SNAP WHERE SNAP_DATE = :1";
-	if stmt, err = tx.Prepare(query); err != nil {
+	query := "SELECT NVL(MAX(SNAP_IDX), 0) + 1 FROM SNAP WHERE SNAP_DATE = " + snapDate;
+	err = tx.QueryRow(query).Scan(&snapIdx)
+	if err != nil {
 		global.FLog.Println(err)
 		return 9901
-	}
-	defer stmt.Close()
-
-	if err = stmt.QueryRow(snapDate).Scan(&snapIdx); err != nil {
-		if err == sql.ErrNoRows {
-			snapIdx = 0
-		} else {
-			global.FLog.Println(err)
-			return 9901
-		}
 	}
 
 	// 스냅정보를 기록한다
