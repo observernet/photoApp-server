@@ -141,7 +141,7 @@ func User_UpdateStat(db *sql.DB, rds redis.Conn, userkey string) error {
 	// 오늘날짜를 가져온다
 	strToday := time.Now().Format("20060102")
 
-	global.FLog.Println("User_UpdateStat", strToday)
+	//global.FLog.Println("User_UpdateStat", strToday)
 
 	// 라벨카운트와 마지막스냅 시간을 가져온다
 	err = db.QueryRow("SELECT LABEL_COUNT, LAST_SNAP_TIME FROM USER_INFO WHERE USER_KEY = '" + userkey + "'").Scan(&label_count, &last_snap_time)

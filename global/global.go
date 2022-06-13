@@ -54,6 +54,7 @@ type AdminConfig struct {
 		InquiryTime2	int64	`json:"inqtime2" binding:"required"`
 		MaxPerSnap		int64	`json:"max_per_snap" binding:"required"`
 		MaxTime			int64	`json:"max_time" binding:"required"`
+		AddAdLabel		int64	`json:"add_ad_label" binding:"required"`
 	} `json:"label" binding:"required"`
 
 	Reword struct {

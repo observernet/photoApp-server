@@ -192,6 +192,12 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 
 	// 응답값을 세팅한다
 	resBody["labelkey"] = fmt.Sprintf("%s%03d", reqBody["snapkey"].(string), labelIdx)
+	if reqBody["status"].(string) == "1" {
+		resBody["accuse_rp"] = adminVar.Reword.Label
+	} else {
+		resBody["label_rp"] = adminVar.Reword.Label
+		if reqBody["is_etc"].(bool) { resBody["label_etc_rp"] = adminVar.Reword.LabelEtc }
+	}
 	resBody["stat"] = map[string]interface{} {
 		"labels": mapStat["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 		"remain_snap_time": remain_snap_time,
