@@ -27,6 +27,9 @@ type ServerConfig struct {
 		Name         	string `json:"name" binding:"required"`
 		MaxOpenConns 	int    `json:"max_open_conns binding:"required"`
 		MaxIdleConns 	int    `json:"max_idle_conns binding:"required"`
+		WS_Name         string `json:"ws_name" binding:"required"`
+		WS_MaxOpenConns int    `json:"ws_max_open_conns binding:"required"`
+		WS_MaxIdleConns int    `json:"ws_max_idle_conns binding:"required"`
 	} `json:"database" binding:"required"`
 
 	Redis struct {
@@ -39,6 +42,12 @@ type ServerConfig struct {
 		KASTransactHost	string	`json:"KAS_transact_host" binding:"required"`
 		SyncRedisHost	string	`json:"sync_redis_host" binding:"required"`
 	} `json:"connector" binding:"required"`
+
+	APIs struct {
+		WSApi			string	`json:"ws_api" binding:"required"`
+		WSKey			string	`json:"ws_key" binding:"required"`
+		WSSecret		string	`json:"ws_secret" binding:"required"`
+	} `json:"apis" binding:"required"`
 }
 
 // Admin Config
