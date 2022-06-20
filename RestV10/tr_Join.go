@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"strings"
 	"strconv"
 	"encoding/json"
 
@@ -420,6 +421,7 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	var tx *sql.Tx
 	var userkey string
 	var address, address_type, address_key string
+	var reword_wslist string
 	var oldInfo map[string]interface {}
 
 	// WSApi에서 정보를 가져온다
@@ -437,7 +439,11 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 지갑주소를 생성해서 가져온다
-	if len(address) == 0 {
+	if oldInfo["ws_wallet"] != nil && len(oldInfo["ws_wallet"].(string)) > 10 {
+		address = oldInfo["ws_wallet"].(string)
+		address_type = "C"
+		address_key = ""
+	} else {
 		if address, err = common.KAS_CreateAccount(userkey); err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -478,22 +484,64 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 					" ('" + address + "', '" + address_type + "', '" + address_key + "', '" + userkey + "', 'Y', sysdate) ")					 
 	if err != nil {
 		global.FLog.Println(err)
-		return 9901
+		if strings.Contains(err.Error(), "ORA-00001") {
+			return 8019
+		} else {
+			return 9901
+		}
 	}
 
-
 	// 포인트를 기록한다
-
+	if oldInfo["obsp"] != nil && oldInfo["obsp"].(float64) > 0 {
+		_, err = tx.Exec("INSERT INTO REWORD_DETAIL " +
+						 " (REWORD_IDX, USER_KEY, SERIAL_NO, REWORD_AMOUNT, EXCHANGE_AMOUNT, EXCHANGE_STATUS, UPDATE_TIME) " +
+						 " VALUES " +
+						 " (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["obsp"].(float64)), 10) + ", 0, 'N', sysdate) ")					 
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+	}
 
 	// WS 리스트를 기록한다
+	if oldInfo["ws"] != nil && len(oldInfo["ws"].([]interface{})) > 0 {
+		for _, ws := range oldInfo["ws"].([]interface{}) {
+			_, err = tx.Exec("INSERT INTO USER_MWS_INFO (USER_KEY, SERIAL_NO, REG_TYPE, REG_TIME, IS_USE, UPDATE_TIME) " +
+							 "VALUES ('" + userkey + "', " + ws.(map[string]interface{})["serial"].(string) + ", 'L', sysdate, 'Y', sysdate) ")					 
+			if err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
 
-
-
+			if ws.(map[string]interface{})["series"] != nil && ws.(map[string]interface{})["series"].(string) != "0" {
+				_, err = tx.Exec("INSERT INTO MWS_SERIES_SERIAL (SERIES, SERIAL_NO, IS_ACTIVE, UPDATE_TIME) " +
+								 "VALUES (" + ws.(map[string]interface{})["series"].(string) + ", " + ws.(map[string]interface{})["serial"].(string) + ", 'Y', sysdate) ")					 
+				if err != nil {
+					global.FLog.Println(err)
+					if strings.Contains(err.Error(), "ORA-00001") {
+						return 8020
+					} else {
+						return 9901
+					}
+				}
+				reword_wslist = reword_wslist + ws.(map[string]interface{})["series"].(string) + "-" + ws.(map[string]interface{})["serial"].(string) + ","
+			}
+		}
+	}
 
 	// 트랜잭션 종료
 	if err = tx.Commit(); err != nil {
 		global.FLog.Println(err)
 		return 9901
+	}
+
+	// 이전 WS 보상은 정지한다
+	if len(reword_wslist) > 0 {
+		reword_wslist = reword_wslist[0:len(reword_wslist)-1]
+		if oldInfo, err = common.WSApi_UpdateWSRewordStatus("N", reword_wslist); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 	}
 
 	// 캐시 정보는 삭제한다

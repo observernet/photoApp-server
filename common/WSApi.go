@@ -21,6 +21,10 @@ func WSApi_GetWSData(serial string) (map[string]interface {}, error) {
 	return _RequestToWSApi("GetWSData", serial)
 }
 
+func WSApi_UpdateWSRewordStatus(active string, serial string) (map[string]interface {}, error) {
+	return _RequestToWSApi("UpdateWSRewordStatus", active, serial)
+}
+
 func _RequestToWSApi(trid string, params ...string) (map[string]interface {}, error) {
 
 	// 요청 URL을 만든다

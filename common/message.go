@@ -36,6 +36,8 @@ func GetErrorMessageKOR(code int) string {
 		case 8016:	return "계정 정보가 존재하지 않습니다"
 		case 8017:	return "해당 휴대전화번호로 등록된 이메일이 없습니다"
 		case 8018:	return "해당 이메일로 등록된 휴대전화번호가 없습니다"
+		case 8019:	return "이미 등록된 지갑주소입니다. 관리자에게 문의하세요"
+		case 8020:	return "이미 등록된 보상정보입니다. 관리자에게 문의하세요"
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"

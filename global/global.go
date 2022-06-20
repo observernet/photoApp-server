@@ -71,6 +71,7 @@ type AdminConfig struct {
 		Label			float64	`json:"label" binding:"required"`
 		LabelEtc		float64	`json:"label_etc" binding:"required"`
 		OBSPPerDay		float64	`json:"obsp_per_day" binding:"required"`
+		AutoExchange	float64	`json:"auto_exchange" binding:"required"`
 	} `json:"reword" binding:"required"`
 }
 
