@@ -136,12 +136,17 @@ func User_UpdateStat(db *sql.DB, rds redis.Conn, userkey string) error {
 
 	var err error
 	var rows *sql.Rows
-	var label_count, last_snap_time, today_snap_count, today_label_count,  today_label_etc_count int64
+	var label_count, last_snap_time, today_snap_count, today_label_count, today_label_etc_count int64
+	var obsp float64 
 
 	// 오늘날짜를 가져온다
 	strToday := time.Now().Format("20060102")
 
 	//global.FLog.Println("User_UpdateStat", strToday)
+
+	// 현재 OBSP를 가져온다
+	obsp, err = GetUserOBSP(db, userkey)
+	if err != nil { return err }
 
 	// 라벨카운트와 마지막스냅 시간을 가져온다
 	err = db.QueryRow("SELECT LABEL_COUNT, LAST_SNAP_TIME FROM USER_INFO WHERE USER_KEY = '" + userkey + "'").Scan(&label_count, &last_snap_time)
@@ -167,6 +172,7 @@ func User_UpdateStat(db *sql.DB, rds redis.Conn, userkey string) error {
 
 	// Redis에 데이타를 올린다
 	mapRedis := map[string]interface{} {
+		"OBSP": obsp,
 		"LABEL_COUNT": label_count,
 		"LAST_SNAP_TIME": last_snap_time,
 		"TODAY_SNAP_COUNT": today_snap_count,

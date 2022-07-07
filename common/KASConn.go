@@ -40,23 +40,23 @@ var _KASTransactConn net.Conn
 
 
 func KAS_CreateAccount(userkey string) (string, error) {
-	return _InquiryCallToKASConn(_KI_TRID_CREATE_ACCOUNT, userkey, `{"cert":"` + global.Config.Service.AccountPool + `"}`)
+	return _InquiryCallToKASConn(_KI_TRID_CREATE_ACCOUNT, "K", userkey, `{"cert":"` + global.Config.Service.AccountPool + `"}`)
 }
 
-func KAS_GetBalanceOf(userkey string, address string) (string, error) {
-	return _InquiryCallToKASConn(_KI_TRID_BALANCEOF, userkey, `{"address":"` + address + `"}`)
+func KAS_GetBalanceOf(userkey string, address string, address_type string) (string, error) {
+	return _InquiryCallToKASConn(_KI_TRID_BALANCEOF, address_type, userkey, `{"address":"` + address + `"}`)
 }
 
-func KAS_Transfer(userkey string, sender string, recipient string, amount string) (string, error) {
-	return _TransactToKASConn(_KI_TRID_TRANSFER, userkey, `{"sender":"` + sender + `", "recipient": "` + recipient + `", "amount": "` + amount + `", "cert": "` + global.Config.Service.AccountPool + `"}`)
+func KAS_Transfer(userkey string, sender string, recipient string, amount string, address_type string, cert_info string) (string, error) {
+	return _TransactToKASConn(_KI_TRID_TRANSFER, address_type, userkey, `{"sender":"` + sender + `", "recipient": "` + recipient + `", "amount": "` + amount + `", "cert": "` + cert_info + `"}`)
 }
 
-func _InquiryCallToKASConn(trid string, userkey string, sendData string) (string, error) {
+func _InquiryCallToKASConn(trid string, acctype string, userkey string, sendData string) (string, error) {
 
 	var err error
 
 	// 전송할 데이타를 생성한다
-	sendBuff := fmt.Sprintf("%s%s%-16s%s%-16s%-32s%0*d%s", trid, _KI_REQTYPE_CALL, global.Config.Service.Name, "K", global.Config.Service.AccountPool, userkey, _KI_BODY_LENGTH, len(sendData), sendData)
+	sendBuff := fmt.Sprintf("%s%s%-16s%s%-16s%-32s%0*d%s", trid, _KI_REQTYPE_CALL, global.Config.Service.Name, acctype, global.Config.Service.AccountPool, userkey, _KI_BODY_LENGTH, len(sendData), sendData)
 
 	var header _KI_REQRES_HEADER
 	var hBuff, bBuff []byte
@@ -112,12 +112,12 @@ func _InquiryCallToKASConn(trid string, userkey string, sendData string) (string
 	return res["msg"].(string), nil
 }
 
-func _TransactToKASConn(trid string, userkey string, sendData string) (string, error) {
+func _TransactToKASConn(trid string, acctype string, userkey string, sendData string) (string, error) {
 
 	var err error
 
 	// 전송할 데이타를 생성한다
-	sendBuff := fmt.Sprintf("%s%s%-16s%s%-16s%-32s%0*d%s", trid, _KI_REQTYPE_TRANSACT, global.Config.Service.Name, "K", global.Config.Service.AccountPool, userkey, _KI_BODY_LENGTH, len(sendData), sendData)
+	sendBuff := fmt.Sprintf("%s%s%-16s%s%-16s%-32s%0*d%s", trid, _KI_REQTYPE_TRANSACT, global.Config.Service.Name, acctype, global.Config.Service.AccountPool, userkey, _KI_BODY_LENGTH, len(sendData), sendData)
 
 	var header _KI_REQRES_HEADER
 	var hBuff, bBuff []byte

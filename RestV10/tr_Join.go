@@ -471,7 +471,7 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	_, err = tx.Exec("INSERT INTO USER_INFO " +
 					" (USER_KEY, NCODE, PHONE, EMAIL, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, UPDATE_TIME) " +
 					" VALUES " +
-					" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + joinInfo["email"].(string) + "', '" + joinInfo["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 0, 0, 0, sysdate) ")
+					" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + joinInfo["email"].(string) + "', '" + joinInfo["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 10, 0, 0, sysdate) ")
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -494,9 +494,9 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	// 포인트를 기록한다
 	if oldInfo["obsp"] != nil && oldInfo["obsp"].(float64) > 0 {
 		_, err = tx.Exec("INSERT INTO REWORD_DETAIL " +
-						 " (REWORD_IDX, USER_KEY, SERIAL_NO, REWORD_AMOUNT, EXCHANGE_AMOUNT, EXCHANGE_STATUS, UPDATE_TIME) " +
+						 " (REWORD_IDX, USER_KEY, SERIAL_NO, REWORD_AMOUNT, UPDATE_TIME) " +
 						 " VALUES " +
-						 " (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["obsp"].(float64)), 10) + ", 0, 'N', sysdate) ")					 
+						 " (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["obsp"].(float64)), 10) + ", sysdate) ")					 
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901

@@ -4,6 +4,7 @@ import (
 	"time"
 	"errors"
 	"strconv"
+	"math"
 	"math/rand"
 	"encoding/json"
 
@@ -163,6 +164,61 @@ func GetFloat64FromNumber(num godror.Number) float64 {
 	}
 
 	return ret
+}
+
+func GetUserOBSP(db *sql.DB, userkey string) (float64, error) {
+
+	var err error
+	var obsp, reword, exchange float64
+
+	err = db.QueryRow("SELECT NVL(SUM(A.REWORD_AMOUNT), 0) FROM REWORD_DETAIL A, REWORD_LIST B WHERE A.REWORD_IDX = B.REWORD_IDX and A.USER_KEY = '" + userkey + "' and B.PROC_STATUS = 'V'").Scan(&reword)
+	if err != nil {
+		return 0, err
+	}
+
+	err = db.QueryRow("SELECT NVL(SUM(PROC_AMOUNT + EXCHANGE_FEE), 0) FROM EXCHANGE_OBSP WHERE USER_KEY = '" + userkey + "' and PROC_STATUS = 'V'").Scan(&exchange)
+	if err != nil {
+		return 0, err
+	}
+
+	obsp = reword - exchange
+	if obsp < 0 { obsp = 0 }
+
+	return obsp, nil
+}
+
+func GetTxFeeOBSP(db *sql.DB, klay_txfee float64) (float64, float64, int64, float64, int64, error) {
+
+	var err error
+	var rows *sql.Rows
+	var symbol string
+	var price, obsr_price, klay_price float64
+	var price_time, obsr_time, klay_time int64
+
+	if rows, err = db.Query("SELECT SYMBOL, PRICE, PRICE_TIME FROM EXCH_PRICE WHERE SYMBOL in ('OBSR', 'KLAY')"); err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+
+	for rows.Next() {	
+		err = rows.Scan(&symbol, &price, &price_time)
+		if err != nil {
+			return 0, 0, 0, 0, 0, err
+		}
+
+		if symbol == "OBSR" {
+			obsr_price = price
+			obsr_time = price_time
+		} else if symbol == "KLAY" {
+			klay_price = price
+			klay_time = price_time
+		}
+	}
+	if obsr_time == 0 || klay_time == 0 {
+		return 0, 0, 0, 0, 0, errors.New("OBSR 또는 KLAY 가격이 존재하지 않습니다")
+	}
+
+	txfee := (klay_price * klay_txfee) / obsr_price
+	return math.Round(txfee), obsr_price, obsr_time, klay_price, klay_time, nil
 }
 
 func SendCode_Phone(ncode string, phone string, code string) {

@@ -49,6 +49,11 @@ func GetErrorMessageKOR(code int) string {
 		case 8108:	return "이미 라벨한 스냅입니다"
 		case 8109:	return "스냅의 최대 라벨수를 초과하였습니다"
 
+		case 8201:	return "이체 수수료 면제 티켓이 부족합니다"
+		case 8202:	return "환전 가능 금액을 초과하였습니다"
+		case 8203:	return "등록 주소가 존재하지 않습니다"
+		case 8204:	return "처리중인 환전 내역이 있습니다. 잠시후에 시도하세요"
+
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"
 		case 9003:	return "요청 데이타 오류"
