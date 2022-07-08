@@ -439,8 +439,8 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 지갑주소를 생성해서 가져온다
-	if oldInfo["ws_wallet"] != nil && len(oldInfo["ws_wallet"].(string)) > 10 {
-		address = oldInfo["ws_wallet"].(string)
+	if oldInfo["body"].(map[string]interface {})["ws_wallet"] != nil && len(oldInfo["body"].(map[string]interface {})["ws_wallet"].(string)) > 10 {
+		address = oldInfo["body"].(map[string]interface {})["ws_wallet"].(string)
 		address_type = "C"
 		address_key = ""
 	} else {
@@ -492,11 +492,11 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 포인트를 기록한다
-	if oldInfo["obsp"] != nil && oldInfo["obsp"].(float64) > 0 {
+	if oldInfo["body"].(map[string]interface {})["obsp"] != nil && oldInfo["body"].(map[string]interface {})["obsp"].(float64) > 0 {
 		_, err = tx.Exec("INSERT INTO REWORD_DETAIL " +
 						 " (REWORD_IDX, USER_KEY, SERIAL_NO, REWORD_AMOUNT, UPDATE_TIME) " +
 						 " VALUES " +
-						 " (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["obsp"].(float64)), 10) + ", sysdate) ")					 
+						 " (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["body"].(map[string]interface {})["obsp"].(float64)), 10) + ", sysdate) ")					 
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -504,8 +504,8 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// WS 리스트를 기록한다
-	if oldInfo["ws"] != nil && len(oldInfo["ws"].([]interface{})) > 0 {
-		for _, ws := range oldInfo["ws"].([]interface{}) {
+	if oldInfo["body"].(map[string]interface {})["ws"] != nil && len(oldInfo["body"].(map[string]interface {})["ws"].([]interface{})) > 0 {
+		for _, ws := range oldInfo["body"].(map[string]interface {})["ws"].([]interface{}) {
 			_, err = tx.Exec("INSERT INTO USER_MWS_INFO (USER_KEY, SERIAL_NO, REG_TYPE, REG_TIME, IS_USE, UPDATE_TIME) " +
 							 "VALUES ('" + userkey + "', " + ws.(map[string]interface{})["serial"].(string) + ", 'L', sysdate, 'Y', sysdate) ")					 
 			if err != nil {

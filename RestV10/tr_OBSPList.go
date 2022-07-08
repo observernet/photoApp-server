@@ -21,7 +21,6 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	// check input
 	if reqBody["loginkey"] == nil { return 9003 }
 
-
 	var err error
 
 	// 유저 정보를 가져온다
@@ -40,7 +39,6 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 첫조회라면, OBSP정보를 가져온다
-	var mapOBSP map[string]interface{}
 	if reqBody["next"] == nil || len(reqBody["next"].(string)) == 0 {
 
 		var adminVar global.AdminConfig
@@ -58,15 +56,67 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			return 9901
 		}
 
-		mapOBSP = map[string]interface{} {"curr": obsp, "auto": adminVar.Reword.AutoExchange}
+		resBody["obsp"] = map[string]interface{} {"curr": obsp, "auto": adminVar.Reword.AutoExchange}
 	}
 
 	// 보상/환전 내역을 가져온다
+	query := "SELECT D, T, SUM(AMOUNT) " +
+			 "FROM " +
+			 "( " +
+			 "	( " +
+			 "		SELECT A.REWORD_DATE D, A.DEVICE T, B.REWORD_AMOUNT AMOUNT " +
+			 "		FROM REWORD_LIST A, REWORD_DETAIL B " +
+			 "		WHERE A.REWORD_IDX = B.REWORD_IDX " +
+			 "		  and A.PROC_STATUS = 'V' " +
+			 "		  and B.USER_KEY = '" + userkey + "' " +
+			 "	) " +
+			 "	UNION ALL " +
+			 "	( " +
+			 "		SELECT TO_NUMBER(TO_CHAR(REQ_TIME, 'RRRRMMDD')) D, 'E' T, PROC_AMOUNT AMOUNT " +
+			 "		FROM EXCHANGE_OBSP " +
+			 "		WHERE PROC_STATUS = 'V' " +
+			 "		and USER_KEY = '" + userkey + "' " +
+			 "	) " +
+			 ") " +
+			 "GROUP BY D, T " +
+			 "ORDER BY D desc, T desc";
+	rows, err := db.Query(query)
+	if err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
+	defer rows.Close()
 
+	var list_count, row_date, prev_date int64
+	var row_type string
+	var row_amount float64
 
+	list := make([]map[string]interface{}, 0)
+	list_date := make([]map[string]interface{}, 0)
+	for rows.Next() {	
+		err = rows.Scan(&row_date, &row_type, &row_amount)
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 
-	// 응답값을 세팅한다
-	if mapOBSP != nil { resBody["obsp"] = mapOBSP }
+		if prev_date != row_date {
+			if len(list_date) > 0 {
+				list = append(list, map[string]interface{} {"date": prev_date, "data": list_date})
+			}
+			list_count = list_count + 1
+			if list_count >= 29 { break }
+
+			list_date = make([]map[string]interface{}, 0)
+		}
+
+		list_date = append(list_date, map[string]interface{} {"type": row_type, "amount": row_amount})
+		prev_date = row_date
+	}
+	if len(list_date) > 0 {
+		list = append(list, map[string]interface{} {"date": prev_date, "data": list_date})
+	}
+	resBody["list"] = list
 
 	return 0
 }

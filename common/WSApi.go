@@ -68,5 +68,5 @@ func _RequestToWSApi(trid string, params ...string) (map[string]interface {}, er
 		return nil, errors.New(resData["msg"].(string))
 	}
 
-	return resData["body"].(map[string]interface {}), nil
+	return resData, nil
 }
