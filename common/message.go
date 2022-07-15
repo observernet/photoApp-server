@@ -38,6 +38,7 @@ func GetErrorMessageKOR(code int) string {
 		case 8018:	return "해당 이메일로 등록된 휴대전화번호가 없습니다"
 		case 8019:	return "이미 등록된 지갑주소입니다. 관리자에게 문의하세요"
 		case 8020:	return "이미 등록된 보상정보입니다. 관리자에게 문의하세요"
+		case 8021:	return "올바르지 않는 지갑주소입니다"
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"
@@ -53,6 +54,13 @@ func GetErrorMessageKOR(code int) string {
 		case 8202:	return "환전 가능 금액을 초과하였습니다"
 		case 8203:	return "등록 주소가 존재하지 않습니다"
 		case 8204:	return "처리중인 환전 내역이 있습니다. 잠시후에 시도하세요"
+		case 8205:	return "환전 가능 시간이 아닙니다 (00:20 ~ 23:50)"
+		case 8206:	return "입력 주소가 등록되지 않은 주소입니다"
+
+		case 8211:	return "출금 가능 시간이 아닙니다 (00:20 ~ 23:50)"
+		case 8212:	return "처리중인 출금 내역이 있습니다. 잠시후에 시도하세요"
+		case 8213:	return "출금 가능 금액을 초과하였습니다"
+		case 8214:	return "개인 지갑은 출금할 수 없습니다"
 
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"

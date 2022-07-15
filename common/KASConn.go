@@ -5,6 +5,7 @@ import (
 	"net"
 	"errors"
 	"strconv"
+	"reflect"
 	"encoding/json"
 
 	"photoApp-server/global"
@@ -109,7 +110,14 @@ func _InquiryCallToKASConn(trid string, acctype string, userkey string, sendData
 		return "", errors.New(res["msg"].(string))
 	}
 
-	return res["msg"].(string), nil
+	var retVal string
+	typeVal := reflect.TypeOf(res["msg"])
+	switch typeVal.Kind() { 
+		case reflect.Float64:	retVal = fmt.Sprintf("%f", res["msg"].(float64))
+		case reflect.String:	retVal = res["msg"].(string)
+	}
+
+	return retVal, nil
 }
 
 func _TransactToKASConn(trid string, acctype string, userkey string, sendData string) (string, error) {

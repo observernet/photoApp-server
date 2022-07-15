@@ -69,6 +69,7 @@ func TR_AdReword(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	// 응답값을 세팅한다
 	resBody["adreword"] = adminVar.Label.AddAdLabel
 	resBody["stat"] = map[string]interface{} {
+		"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
 		"labels": mapStat["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 		"remain_snap_time": remain_snap_time,
 		"count": map[string]interface{} {

@@ -4,6 +4,7 @@ import (
 	"time"
 	"errors"
 	"strconv"
+	"strings"
 	"math"
 	"math/rand"
 	"encoding/json"
@@ -47,6 +48,20 @@ func GetCodeNumber(length int) string {
 	}
 
 	return code
+}
+
+func GetIntDate() (int64) {
+	loc, _ := time.LoadLocation(global.Config.Service.Timezone)
+	kst := time.Now().In(loc)
+	curtime := kst.Format("20060102")
+	return GetInt64FromString(curtime)
+}
+
+func GetIntTime() (int64) {
+	loc, _ := time.LoadLocation(global.Config.Service.Timezone)
+	kst := time.Now().In(loc)
+	curtime := kst.Format("150405")
+	return GetInt64FromString(curtime)
 }
 
 func GetCodeKey(length int) string {
@@ -166,6 +181,26 @@ func GetFloat64FromNumber(num godror.Number) float64 {
 	return ret
 }
 
+func GetInt64FromString(val string) int64 {
+
+	ret, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	return ret
+}
+
+func GetFloat64FromString(val string) float64 {
+
+	ret, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return 0
+	}
+
+	return ret
+}
+
 func GetUserOBSP(db *sql.DB, userkey string) (float64, error) {
 
 	var err error
@@ -186,7 +221,7 @@ func GetUserOBSP(db *sql.DB, userkey string) (float64, error) {
 
 	return obsp, nil
 }
-
+/*
 func GetTxFeeOBSP(db *sql.DB, klay_txfee float64) (float64, float64, int64, float64, int64, error) {
 
 	var err error
@@ -219,6 +254,73 @@ func GetTxFeeOBSP(db *sql.DB, klay_txfee float64) (float64, float64, int64, floa
 
 	txfee := (klay_price * klay_txfee) / obsr_price
 	return math.Round(txfee), obsr_price, obsr_time, klay_price, klay_time, nil
+}
+*/
+func GetTxFee(rds redis.Conn, coin string, fee float64) (map[string]interface{}, error) {
+
+	rkey := global.Config.Service.Name + ":CoinPrice"
+	rvalue, err := redis.String(rds.Do("GET", rkey))
+	if err != nil { return nil, err }
+
+	mapPrice := make([]interface{}, 0)
+	if err = json.Unmarshal([]byte(rvalue), &mapPrice); err != nil { return nil, err }
+
+	res := make(map[string]interface{})
+	if strings.EqualFold(coin, "KRW") {
+
+		var obsr_price, obsr_time float64
+
+		for _, price := range mapPrice {
+			if strings.EqualFold(price.(map[string]interface{})["symbol"].(string), "OBSR") {
+				obsr_price = price.(map[string]interface{})["price"].(float64)
+				obsr_time = price.(map[string]interface{})["time"].(float64)
+			}
+		}
+
+		if obsr_time == 0 {
+			return nil, errors.New("OBSR 가격이 존재하지 않습니다")
+		}
+
+		res["obsr_price"] = obsr_price
+		res["obsr_time"] = obsr_time
+		res["txfee"] = math.Round(fee / obsr_price)
+
+	} else if strings.EqualFold(coin, "KLAY") {
+
+		var klay_price, klay_time float64
+		var obsr_price, obsr_time float64
+
+		for _, price := range mapPrice {
+			if strings.EqualFold(price.(map[string]interface{})["symbol"].(string), "KLAY") {
+				klay_price = price.(map[string]interface{})["price"].(float64)
+				klay_time = price.(map[string]interface{})["time"].(float64)
+			} else if strings.EqualFold(price.(map[string]interface{})["symbol"].(string), "OBSR") {
+				obsr_price = price.(map[string]interface{})["price"].(float64)
+				obsr_time = price.(map[string]interface{})["time"].(float64)
+			}
+		}
+
+		if obsr_time == 0 || klay_time == 0 {
+			return nil, errors.New("OBSR 또는 KLAY 가격이 존재하지 않습니다")
+		}
+
+		res["obsr_price"] = obsr_price
+		res["obsr_time"] = obsr_time
+		res["klay_price"] = klay_price
+		res["klay_time"] = klay_time
+		res["txfee"] = math.Round((klay_price * fee) / obsr_price)
+
+	} else {
+
+		res["txfee"] = fee
+
+	}
+
+	return res, nil
+}
+
+func GetCoinPrice(db *sql.DB, coin string) {
+
 }
 
 func SendCode_Phone(ncode string, phone string, code string) {

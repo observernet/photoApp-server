@@ -76,8 +76,12 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 		case "logout": res_code = TR_Logout(c, db, rds, lang, reqData, resBody)
 		case "obsp_list": res_code = TR_OBSPList(c, db, rds, lang, reqData, resBody)
 		case "obsp_detail": res_code = TR_OBSPDetail(c, db, rds, lang, reqData, resBody)
+		case "wallet_obsr": res_code = TR_WalletOBSR(c, db, rds, lang, reqData, resBody)
+		case "inout_list": res_code = TR_InoutList(c, db, rds, lang, reqData, resBody)
 		case "exchange_info": res_code = TR_ExchangeInfo(c, db, rds, lang, reqData, resBody)
 		case "exchange": res_code = TR_Exchange(c, db, rds, lang, reqData, resBody)
+		case "withdraw_info": res_code = TR_WithdrawInfo(c, db, rds, lang, reqData, resBody)
+		case "withdraw": res_code = TR_Withdraw(c, db, rds, lang, reqData, resBody)
 		case "join": res_code = TR_Join(c, db, rds, lang, reqData, resBody)
 		case "regist_email": res_code = TR_RegistEmail(c, db, rds, lang, reqData, resBody)
 		case "search_user": res_code = TR_SearchUser(c, db, rds, lang, reqData, resBody)
@@ -120,7 +124,8 @@ func CheckHeader(header global.HeaderParameter, reqdata string) int {
 	// Check Timeout
 	timestamp := time.Now().Unix() * 1000;
 	if timestamp - header.XNonce > 5000 {
-		return 9002
+		global.FLog.Println("Time Error")
+		//return 9002
 	}
 
 	// Check Signatue

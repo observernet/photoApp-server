@@ -281,7 +281,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		_, err = tx.Exec("INSERT INTO USER_INFO " +
 						" (USER_KEY, NCODE, PHONE, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, UPDATE_TIME) " +
 						" VALUES " +
-						" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + reqBody["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 0, 0, 0, sysdate) ")
+						" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + reqBody["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 10, 0, 0, sysdate) ")
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -397,7 +397,6 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 				return 9901
 			}
 
-			resBody["ok"] = false
 			resBody["errcnt"] = errorCount
 			resBody["maxerr"] = global.SendCodeMaxErrors
 			return 8008
@@ -410,7 +409,6 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 				return 9901
 			}
 
-			resBody["ok"] = false
 			resBody["errcnt"] = errorCount
 			resBody["maxerr"] = global.SendCodeMaxErrors
 			resBody["limit_time"] = blockTime

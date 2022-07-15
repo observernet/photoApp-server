@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"fmt"
+	"strings"
 	"encoding/json"
 	
 	"photoApp-server/global"
@@ -20,8 +21,11 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	reqBody := reqData["body"].(map[string]interface{})
 
 	// check input
-	if reqBody["loginkey"] == nil || reqBody["amount"] == nil { return 9003 }
-
+	if reqBody["loginkey"] == nil || reqBody["to"] == nil || reqBody["amount"] == nil { return 9003 }
+	
+	// Time Check
+	curtime := common.GetIntTime()
+	if curtime <= 2000 || curtime >= 235000 { return 8205 }
 
 	var err error
 
@@ -46,7 +50,20 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	// 계정 상태 및 로그인 정보를 체크한다
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" { return 8013 }
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
-	if len(mapUser["wallet"].([]map[string]interface{})) == 0 { return 8203 }
+
+	// 입력주소가 고객주소인지 체크한다
+	if len(mapUser["wallet"].([]map[string]interface{})) > 0 {
+		var isSearch bool
+		for _, wallet := range mapUser["wallet"].([]map[string]interface{}) {
+			if strings.EqualFold(wallet["ADDRESS"].(string), reqBody["to"].(string)) {
+				isSearch = true
+				break
+			}
+		}
+		if isSearch == false { return 8206 }
+	} else {
+		return 8203
+	}
 
 	// 처리중인 환전내역이 있는지 체크한다
 	var count_prev_request int64
@@ -71,11 +88,12 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 
 	// 예상 수수료를 계산한다
-	txfee, _, _, _, _, err := common.GetTxFeeOBSP(db, adminVar.Reword.TXFee)
+	mapFee, err := common.GetTxFee(rds, adminVar.TxFee.Exchange.Coin, adminVar.TxFee.Exchange.Fee)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
+	txfee := mapFee["txfee"].(float64)
 
 	// 환전가능금액을 체크한다
 	if (reqBody["amount"].(float64) + txfee) > obsp {
@@ -84,14 +102,14 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 	
 	// 환전 내역을 DB에 기록한다
-	exchange_idx, err := _ExchangeInsertDB(db, userkey, reqBody["amount"].(float64), mapUser["wallet"].([]map[string]interface{})[0]["ADDRESS"].(string), txfee)
+	exchange_idx, err := _ExchangeInsertDB(db, userkey, reqBody["amount"].(float64), reqBody["to"].(string), txfee)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
 
 	// KASConn에 환전을 요청한다
-	kas, err := common.KAS_Transfer("E:" + userkey, adminVar.Reword.Wallet.Address, mapUser["wallet"].([]map[string]interface{})[0]["ADDRESS"].(string), fmt.Sprintf("%f", reqBody["amount"].(float64)), adminVar.Reword.Wallet.Type, adminVar.Reword.Wallet.CertInfo)
+	kas, err := common.KAS_Transfer("E:" + userkey, adminVar.Reword.Wallet.Address, reqBody["to"].(string), fmt.Sprintf("%f", reqBody["amount"].(float64)), adminVar.Reword.Wallet.Type, adminVar.Reword.Wallet.CertInfo)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -101,7 +119,7 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	if err = json.Unmarshal([]byte(kas), &mapKAS); err != nil {
 		return 9901
 	}
-	global.FLog.Println(mapKAS)
+	//global.FLog.Println(mapKAS)
 
 	// KASConn 응답값에 따라 환전 내역을 갱신한다 (중복 환전을 막기 위해 KASConn 요청을 기준으로 2단계로 처리함)
 	if mapKAS["success"].(bool) == true {
@@ -130,6 +148,9 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 
 	// 사용자에게 응답을 전송한다
 	resBody["key"] = exchange_idx
+	resBody["to"] = reqBody["to"].(string)
+	resBody["amount"] = reqBody["amount"].(float64)
+	resBody["txfee"] = txfee
 
 	return 0
 }

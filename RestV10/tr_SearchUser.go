@@ -168,7 +168,6 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 				return 9901
 			}
 
-			resBody["ok"] = false
 			resBody["errcnt"] = errorCount
 			resBody["maxerr"] = global.SendCodeMaxErrors
 			return 8008
@@ -181,7 +180,6 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 				return 9901
 			}
 
-			resBody["ok"] = false
 			resBody["errcnt"] = errorCount
 			resBody["maxerr"] = global.SendCodeMaxErrors
 			resBody["limit_time"] = blockTime
@@ -248,7 +246,6 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	}
 
 	// 응답값을 세팅한다
-	resBody["ok"] = true
 	resBody["user"] = userValue
 
 	return 0

@@ -189,7 +189,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	if loginInfo["code"] == nil || loginInfo["expire"] == nil { return 9902 }
 
 	// 타임아웃을 체크
-	//if g_login_curtime > (int64)(loginInfo["expire"].(float64)) { return 8007 }
+	if g_login_curtime > (int64)(loginInfo["expire"].(float64)) { return 8007 }
 
 	var err error
 	var rvalue string
@@ -208,7 +208,6 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 				return 9901
 			}
 
-			resBody["ok"] = false
 			resBody["errcnt"] = errorCount
 			resBody["maxerr"] = global.SendCodeMaxErrors
 			return 8008
@@ -221,7 +220,6 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 				return 9901
 			}
 
-			resBody["ok"] = false
 			resBody["errcnt"] = errorCount
 			resBody["maxerr"] = global.SendCodeMaxErrors
 			resBody["limit_time"] = blockTime

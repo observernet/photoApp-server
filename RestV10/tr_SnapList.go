@@ -81,7 +81,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			"FROM SNAP A, USER_INFO B " +
 			"WHERE A.USER_KEY = B.USER_KEY " +
 		  	"  and A.UPLOAD_STATUS = 'V' " +
-		  	//"  and A.USER_KEY != '" + userkey + "' " +
+		  	"  and A.USER_KEY != '" + userkey + "' " +
 		  	"  and (A.IS_ACCUSE is NULL OR A.IS_ACCUSE not in ('A', 'Y')) " +
 		  	exclude +
 		    ") AB " +

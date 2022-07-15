@@ -167,7 +167,7 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 	// 조회일의 환전 정보를 가져온다
 	var ExData _OBSPDetail_ExData
-	query = "SELECT SUM(PROC_AMOUNT), SUM(EXCHANGE_FEE) FROM EXCHANGE_OBSP WHERE USER_KEY = '" + userkey + "' and TO_CHAR(REQ_TIME, 'RRRRMMDD') = " + reqBody["date"].(string) + " and PROC_STATUS = 'V'";
+	query = "SELECT NVL(SUM(PROC_AMOUNT), 0), NVL(SUM(EXCHANGE_FEE), 0) FROM EXCHANGE_OBSP WHERE USER_KEY = '" + userkey + "' and TO_CHAR(REQ_TIME, 'RRRRMMDD') = " + reqBody["date"].(string) + " and PROC_STATUS = 'V'";
 	err = db.QueryRow(query).Scan(&ExData.Amount, &ExData.Fee)
 	if err != nil && err != sql.ErrNoRows {
 		global.FLog.Println(err)

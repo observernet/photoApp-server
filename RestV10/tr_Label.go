@@ -92,7 +92,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	}
 
 	// 스냅정보를 체크한다
-	//if row_user_key == userkey { return 8105 }
+	if row_user_key == userkey { return 8105 }
 	if row_is_accuse == "A" || row_is_accuse == "Y" { return 8106 }
 	if row_upload_status != "V" { return 8107 }
 	if row_mylabels > 0 { return 8108 }
@@ -192,13 +192,14 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 
 	// 응답값을 세팅한다
 	resBody["labelkey"] = fmt.Sprintf("%s%03d", reqBody["snapkey"].(string), labelIdx)
-	if reqBody["status"].(string) == "1" {
-		resBody["accuse_rp"] = adminVar.Reword.Label
-	} else {
+	//if reqBody["status"].(string) == "1" {
+	//	resBody["accuse_rp"] = adminVar.Reword.Label
+	//} else {
 		resBody["label_rp"] = adminVar.Reword.Label
 		if reqBody["is_etc"].(bool) { resBody["label_etc_rp"] = adminVar.Reword.LabelEtc }
-	}
+	//}
 	resBody["stat"] = map[string]interface{} {
+		"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
 		"labels": mapStat["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 		"remain_snap_time": remain_snap_time,
 		"count": map[string]interface{} {
