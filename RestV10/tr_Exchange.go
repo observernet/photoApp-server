@@ -102,14 +102,14 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 	
 	// 환전 내역을 DB에 기록한다
-	exchange_idx, err := _ExchangeInsertDB(db, userkey, reqBody["amount"].(float64), reqBody["to"].(string), txfee)
+	exchange_idx, err := _ExchangeInsertDB(db, userkey, reqBody["amount"].(float64), adminVar.Wallet.Exchange.Address, reqBody["to"].(string), txfee)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
 
 	// KASConn에 환전을 요청한다
-	kas, err := common.KAS_Transfer("E:" + userkey, adminVar.Reword.Wallet.Address, reqBody["to"].(string), fmt.Sprintf("%f", reqBody["amount"].(float64)), adminVar.Reword.Wallet.Type, adminVar.Reword.Wallet.CertInfo)
+	kas, err := common.KAS_Transfer("E:" + userkey, adminVar.Wallet.Exchange.Address, reqBody["to"].(string), fmt.Sprintf("%f", reqBody["amount"].(float64)), adminVar.Wallet.Exchange.Type, adminVar.Wallet.Exchange.CertInfo)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -155,7 +155,7 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	return 0
 }
 
-func _ExchangeInsertDB(db *sql.DB, userkey string, amount float64, to string, txfee float64) (int64, error) {
+func _ExchangeInsertDB(db *sql.DB, userkey string, amount float64, from string, to string, txfee float64) (int64, error) {
 
 	var err error
 	var exchange_idx int64
@@ -165,9 +165,9 @@ func _ExchangeInsertDB(db *sql.DB, userkey string, amount float64, to string, tx
 	if err != nil { return 0, err }
 
 	// 환전내역을 저장한다 (Auto commit)
-	query := fmt.Sprintf("INSERT INTO EXCHANGE_OBSP (EXCHANGE_IDX, USER_KEY, REQ_TYPE, REQ_TIME, REQ_AMOUNT, TO_ADDRESS, EXCHANGE_FEE, PROC_STATUS, UPDATE_TIME) " +
-						 "VALUES (%d, '%s', 'U', sysdate, %f, '%s', %f, 'A', sysdate) ",
-						 exchange_idx, userkey, amount, to, txfee)
+	query := fmt.Sprintf("INSERT INTO EXCHANGE_OBSP (EXCHANGE_IDX, USER_KEY, REQ_TYPE, REQ_TIME, REQ_AMOUNT, FROM_ADDRESS, TO_ADDRESS, EXCHANGE_FEE, PROC_STATUS, UPDATE_TIME) " +
+						 "VALUES (%d, '%s', 'U', sysdate, %f, '%s', '%s', %f, 'A', sysdate) ",
+						 exchange_idx, userkey, amount, from, to, txfee)
 	_, err = db.Exec(query)					 
 	if err != nil { return 0, err }
 

@@ -83,6 +83,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 		case "withdraw_info": res_code = TR_WithdrawInfo(c, db, rds, lang, reqData, resBody)
 		case "withdraw": res_code = TR_Withdraw(c, db, rds, lang, reqData, resBody)
 		case "join": res_code = TR_Join(c, db, rds, lang, reqData, resBody)
+		case "check_name": res_code = TR_CheckName(c, db, rds, lang, reqData, resBody)
 		case "regist_email": res_code = TR_RegistEmail(c, db, rds, lang, reqData, resBody)
 		case "search_user": res_code = TR_SearchUser(c, db, rds, lang, reqData, resBody)
 		case "search_passwd": res_code = TR_SearchPasswd(c, db, rds, lang, reqData, resBody)

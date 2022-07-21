@@ -72,12 +72,20 @@ type AdminConfig struct {
 		LabelEtc		float64	`json:"label_etc" binding:"required"`
 		OBSPPerDay		float64	`json:"obsp_per_day" binding:"required"`
 		AutoExchange	float64	`json:"auto_exchange" binding:"required"`
-		Wallet struct {
+	} `json:"reword" binding:"required"`
+
+	Wallet struct {
+		Exchange struct {
 			Address		string	`json:"address" binding:"required"`
 			Type		string	`json:"type" binding:"required"`
 			CertInfo	string	`json:"cert" binding:"required"`
-		} `json:"wallet" binding:"required"`
-	} `json:"reword" binding:"required"`
+		} `json:"exchange" binding:"required"`
+		Withdraw struct {
+			Address		string	`json:"address" binding:"required"`
+			Type		string	`json:"type" binding:"required"`
+			CertInfo	string	`json:"cert" binding:"required"`
+		} `json:"withdraw" binding:"required"`
+	} `json:"wallet" binding:"required"`
 
 	TxFee struct {
 		Exchange struct {

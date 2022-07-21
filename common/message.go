@@ -39,6 +39,8 @@ func GetErrorMessageKOR(code int) string {
 		case 8019:	return "이미 등록된 지갑주소입니다. 관리자에게 문의하세요"
 		case 8020:	return "이미 등록된 보상정보입니다. 관리자에게 문의하세요"
 		case 8021:	return "올바르지 않는 지갑주소입니다"
+		case 8022:	return "동일 닉네임이 존재합니다"
+		case 8023:	return "금칙어 위반입니다"
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"

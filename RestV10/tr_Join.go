@@ -245,6 +245,28 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 	var err error
 
+	// 닉네임이 이미 존재하는지 체크한다
+	var count int64
+	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "'").Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			count = 0
+		} else {
+			global.FLog.Println(err)
+			return 9901
+		}
+	}
+	if count > 0 { return 8022 }
+
+	// 닉네임에 금칙어가 있는지 체크한다
+	pass, err := common.CheckForbiddenWord(db, "N", reqBody["name"].(string))
+	if err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
+	if ( pass == true ) { return 8023 }
+
+
 	if link == "N" && reqBody["newold"].(string) == "N" {
 
 		var tx *sql.Tx

@@ -137,7 +137,7 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		}
 
 		// KASConn에 수수료 출금을 요청한다
-		kas, err = common.KAS_Transfer("F:" + userkey, reqBody["from"].(string), adminVar.Reword.Wallet.Address, fmt.Sprintf("%f", txfee), wallet_type, wallet_cert)
+		kas, err = common.KAS_Transfer("F:" + userkey, reqBody["from"].(string), adminVar.Wallet.Withdraw.Address, fmt.Sprintf("%f", txfee), wallet_type, wallet_cert)
 		if err == nil {
 			if err = json.Unmarshal([]byte(kas), &mapKAS); err == nil {
 				global.FLog.Println(mapKAS)

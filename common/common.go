@@ -323,6 +323,23 @@ func GetCoinPrice(db *sql.DB, coin string) {
 
 }
 
+func CheckForbiddenWord(db *sql.DB, ftype string, word string) (bool, error) {
+
+	var count int64
+
+	uWord := strings.ToUpper(word)
+	query := "SELECT count(IDX) FROM FORBIDDEN_WORD WHERE (WORD_TYPE = 'S' AND UPPER(WORD) = '" + uWord + "') OR  (WORD_TYPE = 'I' AND '" + uWord + "' LIKE '%'||UPPER(WORD)||'%')"
+	global.FLog.Println(query)
+	err := db.QueryRow(query).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	if ( count > 0 ) { return true, nil }
+
+	return false, nil
+}
+
 func SendCode_Phone(ncode string, phone string, code string) {
 	global.FLog.Println("SendCode_Phone", ncode, phone, code)
 }
