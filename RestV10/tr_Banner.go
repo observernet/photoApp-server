@@ -39,7 +39,8 @@ func TR_Banner(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 				lists = append(lists, map[string]interface{} {
 					"title": lst.(map[string]interface{})["TITLE"].(string),
 					"image": lst.(map[string]interface{})["IMAGE"].(string),
-					"link": lst.(map[string]interface{})["LINK"].(string)})
+					"link": lst.(map[string]interface{})["LINK"].(string),
+					"expire": lst.(map[string]interface{})["EXPIRE"].(float64)})
 			}
 		}
 	}

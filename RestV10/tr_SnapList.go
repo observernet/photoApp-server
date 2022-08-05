@@ -82,7 +82,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			"WHERE A.USER_KEY = B.USER_KEY " +
 		  	"  and A.UPLOAD_STATUS = 'V' " +
 		  	"  and A.USER_KEY != '" + userkey + "' " +
-		  	"  and (A.IS_ACCUSE is NULL OR A.IS_ACCUSE not in ('A', 'Y')) " +
+		  	"  and A.IS_SHOW = 'Y' " +
 		  	exclude +
 		    ") AB " +
 			"WHERE AB.SNAP_TIME > :1 " +

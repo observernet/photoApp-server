@@ -77,11 +77,11 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 
 	// 해당스냅의 정보를 가져온다
 	var row_mylabels int64
-	var row_user_key, row_is_accuse, row_upload_status string
-	query := "SELECT USER_KEY, NVL(IS_ACCUSE, 'N'), UPLOAD_STATUS, (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE and SNAP_IDX = A.SNAP_IDX and USER_KEY = '" + userkey + "') " +
+	var row_user_key, row_is_show, row_upload_status string
+	query := "SELECT USER_KEY, IS_SHOW, UPLOAD_STATUS, (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE and SNAP_IDX = A.SNAP_IDX and USER_KEY = '" + userkey + "') " +
 	         "FROM SNAP A " +
 			 "WHERE SNAP_DATE = " + snap_date + " and SNAP_IDX = " + snap_idx;
-	err = db.QueryRow(query).Scan(&row_user_key, &row_is_accuse, &row_upload_status, &row_mylabels)
+	err = db.QueryRow(query).Scan(&row_user_key, &row_is_show, &row_upload_status, &row_mylabels)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 8104
@@ -93,7 +93,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 
 	// 스냅정보를 체크한다
 	if row_user_key == userkey { return 8105 }
-	if row_is_accuse == "A" || row_is_accuse == "Y" { return 8106 }
+	if row_is_show != "Y" { return 8106 }
 	if row_upload_status != "V" { return 8107 }
 	if row_mylabels > 0 { return 8108 }
 
@@ -157,7 +157,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 
 	// 신고구분이 음란폭력이면
 	if reqBody["status"].(string) == "1" && reqBody["accuse"].(string) == "S" {
-		_, err = tx.Exec("UPDATE SNAP SET IS_ACCUSE = 'A', UPDATE_TIME = sysdate WHERE SNAP_DATE = :1 and SNAP_IDX = :2", snap_date, snap_idx)
+		_, err = tx.Exec("UPDATE SNAP SET IS_SHOW = 'N', UPDATE_TIME = sysdate WHERE SNAP_DATE = :1 and SNAP_IDX = :2", snap_date, snap_idx)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901

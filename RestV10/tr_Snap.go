@@ -121,9 +121,9 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 
 	// 스냅정보를 기록한다
 	_, err = tx.Exec("INSERT INTO SNAP " +
-					 " (SNAP_DATE, SNAP_IDX, SNAP_TIME, USER_KEY, LATD, LNGD, ALTD, BEAR, PRE, PM10, PM25, UPLOAD_STATUS, USER_IP, UPDATE_TIME) " +
+					 " (SNAP_DATE, SNAP_IDX, SNAP_TIME, USER_KEY, LATD, LNGD, ALTD, BEAR, PRE, PM10, PM25, IS_SHOW, UPLOAD_STATUS, USER_IP, UPDATE_TIME) " +
 					 " VALUES " +
-					 " (:1, :2, sysdate, :3, :4, :5, :6, :7, :8, :9, :10, 'A', :11, sysdate) ",
+					 " (:1, :2, sysdate, :3, :4, :5, :6, :7, :8, :9, :10, 'Y', 'A', :11, sysdate) ",
 					 snapDate, snapIdx, userkey,
 					 reqBody["lat"].(float64), reqBody["lng"].(float64), reqBody["alt"].(float64), reqBody["bear"].(float64), reqBody["pre"].(float64),
 					 pm10, pm25, c.ClientIP())

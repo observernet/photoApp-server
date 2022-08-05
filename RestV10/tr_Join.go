@@ -29,7 +29,7 @@ func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 
 	// global variable
 	g_join_time = time.Now().UnixNano() / 1000000
-	g_join_rkey = global.Config.Service.Name + ":Join"
+	g_join_rkey = global.Config.Service.Name + ":SendCode:Join"
 	g_join_phone = common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 
 	var err error
@@ -247,7 +247,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 	// 닉네임이 이미 존재하는지 체크한다
 	var count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "'").Scan(&count)
+	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			count = 0
@@ -338,7 +338,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 		// 이미 존재하는 이메일 인지 체크한다
 		var userCount int64
-		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE EMAIL = '" + reqBody["email"].(string) + "'"
+		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(EMAIL) = '" + strings.ToUpper(reqBody["email"].(string)) + "' and STATUS <> 'C'"
 		if err = db.QueryRow(query).Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
@@ -351,6 +351,22 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		if userCount > 0 {
 			global.FLog.Println("이미 가입된 이메일입니다 [%s:%s]", reqBody["email"].(string), reqBody["email"].(string))
 			return 8003
+		}
+
+		// WSApi 에서도 존재하는 이메일인지 체크한다
+		if reqBody["newold"].(string) == "O" {
+			_, err := common.WSApi_CheckUserEmail(reqBody["email"].(string))
+			if err != nil {
+				if strings.Contains(err.Error(), "Not Found") {
+					return 8024
+				} else if strings.Contains(err.Error(), "not valid") {
+					return 8025
+				} else {
+					global.FLog.Println(err)
+					return 9901
+				}
+			}
+			//if wsRes["code"].(float64) != 0 { return 8024 }
 		}
 
 		// 인증코드를 생성한다
@@ -459,7 +475,7 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 지갑주소를 생성해서 가져온다
-	if oldInfo["body"].(map[string]interface {})["ws_wallet"] != nil && len(oldInfo["body"].(map[string]interface {})["ws_wallet"].(string)) > 10 {
+	if oldInfo != nil && oldInfo["body"].(map[string]interface {})["ws_wallet"] != nil && len(oldInfo["body"].(map[string]interface {})["ws_wallet"].(string)) > 10 {
 		address = oldInfo["body"].(map[string]interface {})["ws_wallet"].(string)
 		address_type = "C"
 		address_key = ""
@@ -511,40 +527,44 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		}
 	}
 
-	// 포인트를 기록한다
-	if oldInfo["body"].(map[string]interface {})["obsp"] != nil && oldInfo["body"].(map[string]interface {})["obsp"].(float64) > 0 {
-		_, err = tx.Exec("INSERT INTO REWORD_DETAIL " +
-						 " (REWORD_IDX, USER_KEY, SERIAL_NO, REWORD_AMOUNT, UPDATE_TIME) " +
-						 " VALUES " +
-						 " (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["body"].(map[string]interface {})["obsp"].(float64)), 10) + ", sysdate) ")					 
-		if err != nil {
-			global.FLog.Println(err)
-			return 9901
-		}
-	}
+	// oldInfo가 존재한다면
+	if oldInfo != nil {
 
-	// WS 리스트를 기록한다
-	if oldInfo["body"].(map[string]interface {})["ws"] != nil && len(oldInfo["body"].(map[string]interface {})["ws"].([]interface{})) > 0 {
-		for _, ws := range oldInfo["body"].(map[string]interface {})["ws"].([]interface{}) {
-			_, err = tx.Exec("INSERT INTO USER_MWS_INFO (USER_KEY, SERIAL_NO, REG_TYPE, REG_TIME, IS_USE, UPDATE_TIME) " +
-							 "VALUES ('" + userkey + "', " + ws.(map[string]interface{})["serial"].(string) + ", 'L', sysdate, 'Y', sysdate) ")					 
+		// 포인트를 기록한다
+		if oldInfo["body"].(map[string]interface {})["obsp"] != nil && oldInfo["body"].(map[string]interface {})["obsp"].(float64) > 0 {
+			_, err = tx.Exec("INSERT INTO REWORD_DETAIL " +
+							" (REWORD_IDX, USER_KEY, SERIAL_NO, REWORD_AMOUNT, UPDATE_TIME) " +
+							" VALUES " +
+							" (0, '" + userkey + "', 0, " + strconv.FormatInt((int64)(oldInfo["body"].(map[string]interface {})["obsp"].(float64)), 10) + ", sysdate) ")					 
 			if err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
+		}
 
-			if ws.(map[string]interface{})["series"] != nil && ws.(map[string]interface{})["series"].(string) != "0" {
-				_, err = tx.Exec("INSERT INTO MWS_SERIES_SERIAL (SERIES, SERIAL_NO, IS_ACTIVE, UPDATE_TIME) " +
-								 "VALUES (" + ws.(map[string]interface{})["series"].(string) + ", " + ws.(map[string]interface{})["serial"].(string) + ", 'Y', sysdate) ")					 
+		// WS 리스트를 기록한다
+		if oldInfo["body"].(map[string]interface {})["ws"] != nil && len(oldInfo["body"].(map[string]interface {})["ws"].([]interface{})) > 0 {
+			for _, ws := range oldInfo["body"].(map[string]interface {})["ws"].([]interface{}) {
+				_, err = tx.Exec("INSERT INTO USER_MWS_INFO (USER_KEY, SERIAL_NO, REG_TYPE, REG_TIME, IS_USE, UPDATE_TIME) " +
+								"VALUES ('" + userkey + "', " + ws.(map[string]interface{})["serial"].(string) + ", 'L', sysdate, 'Y', sysdate) ")					 
 				if err != nil {
 					global.FLog.Println(err)
-					if strings.Contains(err.Error(), "ORA-00001") {
-						return 8020
-					} else {
-						return 9901
-					}
+					return 9901
 				}
-				reword_wslist = reword_wslist + ws.(map[string]interface{})["series"].(string) + "-" + ws.(map[string]interface{})["serial"].(string) + ","
+
+				if ws.(map[string]interface{})["series"] != nil && ws.(map[string]interface{})["series"].(string) != "0" {
+					_, err = tx.Exec("INSERT INTO MWS_SERIES_SERIAL (SERIES, SERIAL_NO, IS_ACTIVE, UPDATE_TIME) " +
+									"VALUES (" + ws.(map[string]interface{})["series"].(string) + ", " + ws.(map[string]interface{})["serial"].(string) + ", 'Y', sysdate) ")					 
+					if err != nil {
+						global.FLog.Println(err)
+						if strings.Contains(err.Error(), "ORA-00001") {
+							return 8020
+						} else {
+							return 9901
+						}
+					}
+					reword_wslist = reword_wslist + ws.(map[string]interface{})["series"].(string) + "-" + ws.(map[string]interface{})["serial"].(string) + ","
+				}
 			}
 		}
 	}

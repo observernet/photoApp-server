@@ -25,7 +25,7 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	if reqBody["type"] == nil || (reqBody["type"].(string) != "phone" && reqBody["type"].(string) != "email") { return 9003 }
 	if reqBody["type"].(string) == "phone" && (reqBody["ncode"] == nil || reqBody["phone"] == nil) { return 9003 }
 	if reqBody["type"].(string) == "email" && reqBody["email"] == nil { return 9003 }
-	if reqBody["ncode"] != nil && string(reqBody["ncode"].(string)[0]) == "+" { return 9003 }
+	if reqBody["type"].(string) == "phone" && reqBody["ncode"] != nil && string(reqBody["ncode"].(string)[0]) == "+" { return 9003 }
 
 	// Global 변수값을 세팅한다
 	g_login_curtime = time.Now().UnixNano() / 1000000
@@ -40,7 +40,7 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	var loginInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":LoginCode", g_login_hashkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":SendCode:Login", g_login_hashkey)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -94,7 +94,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 
 	// 계정정보를 가져온다
 	if reqBody["type"].(string) == "phone" {
-		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE NCODE = :1 and PHONE = :2";
+		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
 		if stmt, err = db.Prepare(query); err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -110,7 +110,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 			}
 		}
 	} else {
-		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE EMAIL = :1";
+		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
 		if stmt, err = db.Prepare(query); err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -149,7 +149,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	// Redis에 캐싱값을 기록한다
 	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_login_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "userkey": userkey}
 	jsonStr, _ := json.Marshal(mapV)
-	if _, err = rds.Do("HSET", global.Config.Service.Name + ":LoginCode", g_login_hashkey, jsonStr); err != nil {
+	if _, err = rds.Do("HSET", global.Config.Service.Name + ":SendCode:Login", g_login_hashkey, jsonStr); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -203,7 +203,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			loginInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(loginInfo)
-			if _, err = rds.Do("HSET", global.Config.Service.Name + ":LoginCode", g_login_hashkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SendCode:Login", g_login_hashkey, jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -215,7 +215,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
 			blockTime := g_login_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("HSET", global.Config.Service.Name + ":LoginCode", g_login_hashkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SendCode:Login", g_login_hashkey, rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -274,6 +274,14 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 								"label_etc": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64),
 								"label_etc_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64) * adminVar.Reword.LabelEtc}}
 
+	resBody["reword"] = map[string]interface{} {
+							"snap": adminVar.Reword.Snap,
+							"label": adminVar.Reword.Label,
+							"label_etc": adminVar.Reword.LabelEtc,
+							"obsp_per_day": adminVar.Reword.OBSPPerDay,
+							"auto_exchange": adminVar.Reword.AutoExchange,
+							"persona": adminVar.Reword.Persona}
+
 	wallets := make([]map[string]interface{}, 0)
 	if mapUser["wallet"] != nil {
 		for _, wallet := range mapUser["wallet"].([]map[string]interface{}) {
@@ -286,7 +294,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	resBody["wallet"] = wallets
 
 	// 캐시 정보는 삭제한다
-	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":LoginCode", g_login_hashkey); err != nil {
+	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":SendCode:Login", g_login_hashkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

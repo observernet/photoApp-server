@@ -40,7 +40,7 @@ func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	var StepInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":SearchUser", g_search_hashkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", global.Config.Service.Name + ":SendCode:SearchUser", g_search_hashkey)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -100,7 +100,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// Redis에 캐싱값을 기록한다
 		mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_search_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "ncode": reqBody["ncode"].(string), "phone": reqBody["phone"].(string)}
 		jsonStr, _ := json.Marshal(mapV)
-		if _, err := rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, jsonStr); err != nil {
+		if _, err := rds.Do("HSET", global.Config.Service.Name + ":SendCode:SearchUser", g_search_hashkey, jsonStr); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -112,7 +112,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// Redis에 캐싱값을 기록한다
 		mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_search_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "email": reqBody["email"].(string)}
 		jsonStr, _ := json.Marshal(mapV)
-		if _, err := rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, jsonStr); err != nil {
+		if _, err := rds.Do("HSET", global.Config.Service.Name + ":SendCode:SearchUser", g_search_hashkey, jsonStr); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -163,7 +163,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			StepInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(StepInfo)
-			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SendCode:SearchUser", g_search_hashkey, jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -175,7 +175,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
 			blockTime := g_search_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SearchUser", g_search_hashkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", global.Config.Service.Name + ":SendCode:SearchUser", g_search_hashkey, rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -191,7 +191,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	var query, userValue string
 
 	if reqBody["type"].(string) == "phone" {
-		query = "SELECT EMAIL FROM USER_INFO WHERE NCODE = :1 and PHONE = :2";
+		query = "SELECT EMAIL FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
 		if stmt, err = db.Prepare(query); err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -211,7 +211,16 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		if len(s) == 2 {
 			ss := strings.Split(s[0], "@")
 			if len(ss) == 2 {
-				userValue = ss[0][0:3] + "****@" + ss[1][0:1] + "***." + s[1]
+				if len(ss[0]) > 3 {
+					userValue = ss[0][0:3]
+					for i := 3 ; i < len(ss[0]) ; i++ { userValue = userValue + "*" }
+				} else {
+					userValue = ss[0]
+				}
+				userValue = userValue + "@" + ss[1][0:1]
+				for i := 1 ; i < len(ss[1]) ; i++ { userValue = userValue + "*" }
+				userValue = userValue + "." + s[1]
+				//userValue = ss[0][0:3] + "****@" + ss[1][0:1] + "***." + s[1]
 			} else {
 				userValue = userValue[0:3] + "****";
 			}
@@ -219,7 +228,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 			userValue = userValue[0:3] + "****";
 		}
 	} else {
-		query = "SELECT PHONE FROM USER_INFO WHERE EMAIL = :1";
+		query = "SELECT PHONE FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
 		if stmt, err = db.Prepare(query); err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -236,11 +245,11 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 
 		length := len(userValue)
-		userValue = userValue[length-4:length]
+		if length > 4 { userValue = userValue[length-4:length] }
 	}
 
 	// 캐시 정보는 삭제한다
-	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":SearchUser", g_search_hashkey); err != nil {
+	if _, err = rds.Do("HDEL", global.Config.Service.Name + ":SendCode:SearchUser", g_search_hashkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

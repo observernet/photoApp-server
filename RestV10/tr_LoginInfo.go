@@ -64,24 +64,32 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 
 	// 응답값을 세팅한다
 	resBody["info"] = map[string]interface{} {
-			"ncode": mapUser["info"].(map[string]interface{})["NCODE"].(string),
-			"phone": mapUser["info"].(map[string]interface{})["PHONE"].(string),
-			"email": mapUser["info"].(map[string]interface{})["EMAIL"].(string),
-			"name":  mapUser["info"].(map[string]interface{})["NAME"].(string),
-			"photo": mapUser["info"].(map[string]interface{})["PHOTO"].(string),
-			"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64)}
+							"ncode": mapUser["info"].(map[string]interface{})["NCODE"].(string),
+							"phone": mapUser["info"].(map[string]interface{})["PHONE"].(string),
+							"email": mapUser["info"].(map[string]interface{})["EMAIL"].(string),
+							"name":  mapUser["info"].(map[string]interface{})["NAME"].(string),
+							"photo": mapUser["info"].(map[string]interface{})["PHOTO"].(string),
+							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64)}
 	
 	resBody["stat"] = map[string]interface{} {
-		"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
-		"labels": mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
-		"remain_snap_time": remain_snap_time,
-		"count": map[string]interface{} {
-			"snap": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64),
-			"snap_rp": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64) * adminVar.Reword.Snap,
-			"label": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64),
-			"label_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64) * adminVar.Reword.Label,
-			"label_etc": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64),
-			"label_etc_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64) * adminVar.Reword.LabelEtc}}
+							"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
+							"labels": mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
+							"remain_snap_time": remain_snap_time,
+							"count": map[string]interface{} {
+								"snap": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64),
+								"snap_rp": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64) * adminVar.Reword.Snap,
+								"label": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64),
+								"label_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_COUNT"].(float64) * adminVar.Reword.Label,
+								"label_etc": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64),
+								"label_etc_rp": mapUser["stat"].(map[string]interface{})["TODAY_LABEL_ETC_COUNT"].(float64) * adminVar.Reword.LabelEtc}}
+	
+	resBody["reword"] = map[string]interface{} {
+							"snap": adminVar.Reword.Snap,
+							"label": adminVar.Reword.Label,
+							"label_etc": adminVar.Reword.LabelEtc,
+							"obsp_per_day": adminVar.Reword.OBSPPerDay,
+							"auto_exchange": adminVar.Reword.AutoExchange,
+							"persona": adminVar.Reword.Persona}
 
 	wallets := make([]map[string]interface{}, 0)
 	if mapUser["wallet"] != nil {

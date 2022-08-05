@@ -118,7 +118,7 @@ func User_UpdateWallet(db *sql.DB, rds redis.Conn, userkey string) error {
 	var mapWallet []map[string]interface{}
 
 	// 지갑 정보를 가져온다
-	query := "SELECT ADDRESS, NAME, WALLET_TYPE, CERT_INFO FROM WALLET_INFO WHERE USER_KEY = :1"
+	query := "SELECT ADDRESS, NAME, WALLET_TYPE, CERT_INFO FROM WALLET_INFO WHERE USER_KEY = :1 and IS_USE = 'Y'"
 	if stmt, err = db.Prepare(query); err != nil { return err }
 	if rows, err = stmt.Query(userkey); err != nil { return err }
 	if mapWallet, err = GetRowsResult(rows, 0); err != nil { return err }

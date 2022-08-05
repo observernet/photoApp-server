@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"log"
+	"time"
 	"runtime"
 	"io"
+	"syscall"
 
 	"photoApp-server/global"
 	//"photoApp-server/common"
@@ -20,26 +22,27 @@ import (
 
 func main() {
 
-	os.Setenv("TZ", global.Config.Service.Timezone)
+	time.Now()		// 이해할수 없지만, 호출 한번해야 타임존이 제대로 설정된다 ㅡㅡ
+	//os.Setenv("TZ", global.Config.Service.Timezone)
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Load Config File
 	LoadServerConfig(global.ConfigFile)
-
+	
 	// Logger Setting
 	fLog := SettingLogger(); defer fLog.Close()
-
+	
 	// Connect Database
 	db := ConnectDatabase(); defer db.Close()
 	rds := ConnectRedis(); defer rds.Close()
-
+	
 	// set gin framework
 	var router *gin.Engine
-
+	
 	if global.Config.Service.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 		gin.DisableConsoleColor()
-
+		
 		// Gin Log File Setting
 		fgin, err := os.OpenFile("log/" + global.Config.Service.Name + "-gin.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
@@ -55,12 +58,12 @@ func main() {
 	} else {
 		router = gin.Default()
 	}
-
+	
 	// Gin Routing
 	router.POST("/V10", func(c *gin.Context) {
 		RestV10.ProcRestV10(c, db, rds)
 	})
-
+	
 	router.RunTLS(global.Config.WWW.HttpHost, global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
 }
 
@@ -125,6 +128,7 @@ func SettingLogger() *os.File {
 		if err != nil {
 			panic(err)
 		}
+		syscall.Dup2(int(file.Fd()), 2)
 		global.FLog = log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
 	} else {
 		global.FLog = log.New(os.Stdout, "[DEBUG] ", log.Ldate|log.Ltime|log.Lshortfile)

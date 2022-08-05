@@ -329,7 +329,6 @@ func CheckForbiddenWord(db *sql.DB, ftype string, word string) (bool, error) {
 
 	uWord := strings.ToUpper(word)
 	query := "SELECT count(IDX) FROM FORBIDDEN_WORD WHERE (WORD_TYPE = 'S' AND UPPER(WORD) = '" + uWord + "') OR  (WORD_TYPE = 'I' AND '" + uWord + "' LIKE '%'||UPPER(WORD)||'%')"
-	global.FLog.Println(query)
 	err := db.QueryRow(query).Scan(&count)
 	if err != nil {
 		return false, err

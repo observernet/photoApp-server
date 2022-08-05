@@ -13,6 +13,10 @@ import (
 	"photoApp-server/global"
 )
 
+func WSApi_CheckUserEmail(email string) (map[string]interface {}, error) {
+	return _RequestToWSApi("CheckUserEmail", email)
+}
+
 func WSApi_GetUserInfo(email string) (map[string]interface {}, error) {
 	return _RequestToWSApi("GetUserInfo", email)
 }

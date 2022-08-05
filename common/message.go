@@ -41,6 +41,11 @@ func GetErrorMessageKOR(code int) string {
 		case 8021:	return "올바르지 않는 지갑주소입니다"
 		case 8022:	return "동일 닉네임이 존재합니다"
 		case 8023:	return "금칙어 위반입니다"
+		case 8024:	return "이전 제보앱에 회원정보가 존재하지 않습니다."
+		case 8025:	return "이전 제보앱에 회원상태가 올바르지 않습니다."
+		case 8026:	return "이메일이 등록되어 있지 않아 휴대폰 변경이 불가능합니다. 관리자에게 문의하세요"
+		case 8027:	return "이전 값과 동일합니다"
+		case 8028:	return "입력된 퍼소나 정보가 없습니다"
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"
@@ -63,6 +68,9 @@ func GetErrorMessageKOR(code int) string {
 		case 8212:	return "처리중인 출금 내역이 있습니다. 잠시후에 시도하세요"
 		case 8213:	return "출금 가능 금액을 초과하였습니다"
 		case 8214:	return "개인 지갑은 출금할 수 없습니다"
+		case 8215:	return "등록된 지갑이 여러개입니다. 관리자에게 문의하세요"
+		case 8216:	return "개인지갑만 변경 가능합니다"
+		case 8217:	return "옵저버 지갑만 신청 가능합니다"
 
 		case 9001:	return "검증 오류"
 		case 9002:	return "요청이 만료되었습니다"

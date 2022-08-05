@@ -26,6 +26,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 
 	// Read Header & Body
 	if err = c.ShouldBindHeader(&header); err != nil {
+		global.FLog.Println("Header JSON Parse Error")
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"code": 9001, "lang": "E", "message": common.GetErrorMessage("E", 9001)})
 		return
 	}
@@ -45,12 +46,14 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 	// request body json to Map
 	reqData := make(map[string]interface{})	
 	if err = json.Unmarshal(tr, &reqData); err != nil {
+		global.FLog.Println("Body JSON Parse Error")
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"code": 9003, "lang": "E", "message": common.GetErrorMessage("E", 9003)})
 		return
 	}
 
 	// check tr struct
 	if reqData["trid"] == nil || reqData["key"] == nil || reqData["lang"] == nil || reqData["body"] == nil {
+		global.FLog.Println("Body Struct Error")
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"code": 9003, "lang": "E", "message": common.GetErrorMessage("E", 9003)})
 		return
 	}
@@ -82,11 +85,17 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 		case "exchange": res_code = TR_Exchange(c, db, rds, lang, reqData, resBody)
 		case "withdraw_info": res_code = TR_WithdrawInfo(c, db, rds, lang, reqData, resBody)
 		case "withdraw": res_code = TR_Withdraw(c, db, rds, lang, reqData, resBody)
+		case "update_wallet": res_code = TR_UpdateWallet(c, db, rds, lang, reqData, resBody)
+		case "mysnap_list": res_code = TR_MySnapList(c, db, rds, lang, reqData, resBody)
+		case "notice": res_code = TR_Notice(c, db, rds, lang, reqData, resBody)
 		case "join": res_code = TR_Join(c, db, rds, lang, reqData, resBody)
 		case "check_name": res_code = TR_CheckName(c, db, rds, lang, reqData, resBody)
 		case "regist_email": res_code = TR_RegistEmail(c, db, rds, lang, reqData, resBody)
 		case "search_user": res_code = TR_SearchUser(c, db, rds, lang, reqData, resBody)
 		case "search_passwd": res_code = TR_SearchPasswd(c, db, rds, lang, reqData, resBody)
+		case "update_user": res_code = TR_UpdateUser(c, db, rds, lang, reqData, resBody)
+		case "persona": res_code = TR_Persona(c, db, rds, lang, reqData, resBody)
+		case "joinout": res_code = TR_JoinOut(c, db, rds, lang, reqData, resBody)
 		default:
 			global.FLog.Println("정의되지 않은 TR:", reqData["trid"])
 			res_code = 9004
@@ -104,7 +113,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 	if res_code > 0 { responseTR["message"] = common.GetErrorMessage(lang, res_code) }
 	responseTR["lang"] = lang
 	responseTR["trid"] = reqData["trid"]
-	responseTR["body"] = resBody
+	if len(resBody) > 0 { responseTR["body"] = resBody }
 
 	// Print Response
 	meJson, _ := json.Marshal(responseTR)
@@ -125,14 +134,15 @@ func CheckHeader(header global.HeaderParameter, reqdata string) int {
 	// Check Timeout
 	timestamp := time.Now().Unix() * 1000;
 	if timestamp - header.XNonce > 5000 {
-		global.FLog.Println("Time Error")
-		//return 9002
+		global.FLog.Println("Header Time Error", header)
+		return 9002
 	}
 
 	// Check Signatue
 	endata := strconv.FormatInt(header.XNonce, 10) + header.XAccess + reqdata
 	sign := common.EncyptData(endata, global.Config.Service.APISecret)
 	if sign != header.XSignature {
+		global.FLog.Println("Header Sign Error", header)
 		return 9001
 	}
 
