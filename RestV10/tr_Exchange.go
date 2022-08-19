@@ -93,7 +93,7 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		global.FLog.Println(err)
 		return 9901
 	}
-	txfee := mapFee["txfee"].(float64)
+	txfee := mapFee["txfee"].(float64) * 2.0
 
 	// 환전가능금액을 체크한다
 	if (reqBody["amount"].(float64) + txfee) > obsp {

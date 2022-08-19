@@ -34,7 +34,7 @@ func main() {
 	
 	// Connect Database
 	db := ConnectDatabase(); defer db.Close()
-	rds := ConnectRedis(); defer rds.Close()
+	rdp := ConnectRedis(); defer rdp.Close()
 	
 	// set gin framework
 	var router *gin.Engine
@@ -61,7 +61,7 @@ func main() {
 	
 	// Gin Routing
 	router.POST("/V10", func(c *gin.Context) {
-		RestV10.ProcRestV10(c, db, rds)
+		RestV10.ProcRestV10(c, db, rdp)
 	})
 	
 	router.RunTLS(global.Config.WWW.HttpHost, global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
@@ -152,23 +152,20 @@ func ConnectDatabase() (*sql.DB) {
 	return db
 }
 
-func ConnectRedis() (redis.Conn) {
+func ConnectRedis() (*redis.Pool) {
 
-	var err error
-	var conn redis.Conn
+	pool := &redis.Pool {
+        MaxIdle: global.Config.Redis.MaxIdleConns,
+        MaxActive: global.Config.Redis.MaxActiveConns,
+		IdleTimeout: 600 * time.Second,
+        Dial: func() (redis.Conn, error) {
+            rc, err := redis.Dial("tcp", global.Config.Redis.Host)
+            if err != nil { return nil, err }
 
-	// connect Redis
-	conn, err = redis.Dial("tcp", global.Config.Redis.Host)
-	if err != nil {
-		panic(err)
-	}
-
-	// auth Connection
-	_, err = conn.Do("AUTH", global.Config.Redis.Password)
-	if err != nil {
-		conn.Close()
-		panic(err)
-	}
-
-	return conn
+			_, err = rc.Do("AUTH", global.Config.Redis.Password)
+			if err != nil { return nil, err }
+            return rc, nil
+        },
+    }
+	return pool
 }

@@ -64,7 +64,7 @@ func TR_ExchangeInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 
 	// 응답값을 세팅한다
 	resBody["obsp"] = obsp
-	resBody["txfee"] = mapFee["txfee"].(float64)
+	resBody["txfee"] = mapFee["txfee"].(float64) * 2.0
 	resBody["base_txfee"] = adminVar.TxFee.Exchange.Fee
 	resBody["obsr_price"] = mapFee["obsr_price"].(float64)
 	resBody["obsr_time"] = mapFee["obsr_time"].(float64)

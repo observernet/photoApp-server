@@ -35,6 +35,8 @@ type ServerConfig struct {
 	Redis struct {
 		Host			string	`json:"host" binding:"required"`
 		Password		string	`json:"password" binding:"required"`
+		MaxIdleConns 	int    `json:"max_idle_conns binding:"required"`
+		MaxActiveConns 	int    `json:"max_active_conns binding:"required"`
 	} `json:"redis" binding:"required"`
 
 	Connector struct {

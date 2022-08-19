@@ -19,7 +19,7 @@ import (
 )
 
 // Receive Request & Send Response
-func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
+func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 
 	var err error
 	var header global.HeaderParameter
@@ -64,6 +64,10 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rds redis.Conn) {
 	// Change Lang
 	if strings.EqualFold(lang, "kr") { lang = "K" }
 	if strings.EqualFold(lang, "en") { lang = "E" }
+
+	// Redis Connect
+	rds := rdp.Get();
+	defer rds.Close();
 
 	// switch request
 	resBody := make(map[string]interface{})

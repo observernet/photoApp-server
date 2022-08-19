@@ -68,6 +68,7 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			 "		FROM REWORD_LIST A, REWORD_DETAIL B " +
 			 "		WHERE A.REWORD_IDX = B.REWORD_IDX " +
 			 "		  and A.PROC_STATUS = 'V' " +
+			 "		  and A.REWORD_IDX > 0 " +
 			 "		  and B.USER_KEY = '" + userkey + "' " +
 			 "	) " +
 			 "	UNION ALL " +

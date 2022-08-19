@@ -34,6 +34,7 @@ type _OBSPDetail_WSData struct {
 	SerialNo			string
 	Reword				float64
 	Address				string
+	Time				int64
 }
 
 type _OBSPDetail_ExData struct {
@@ -145,11 +146,13 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 			global.FLog.Println(err)
 			return 9901
 		}
+		//global.FLog.Println(WSAPiRes)
 
 		for _, mapWS := range WSAPiRes["body"].([]interface{}) {
 			for i := 0 ; i < len(WSList) ; i++ {
 				if WSList[i].SerialNo == mapWS.(map[string]interface {})["serial"].(string) {
 					WSList[i].Address = mapWS.(map[string]interface {})["address"].(string)
+					WSList[i].Time = (int64)(mapWS.(map[string]interface {})["time"].(float64)) * 1000
 					break
 				}
 			}
@@ -160,7 +163,7 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	if len(WSList) > 0 {
 		resWS := make([]map[string]interface{}, 0)
 		for i := 0 ; i < len(WSList) ; i++ {
-			resWS = append(resWS, map[string]interface{} {"serial": WSList[i].SerialNo, "address": WSList[i].Address, "obsp": WSList[i].Reword})
+			resWS = append(resWS, map[string]interface{} {"serial": WSList[i].SerialNo, "address": WSList[i].Address, "time": WSList[i].Time, "obsp": WSList[i].Reword})
 		}
 		resBody["WS"] = resWS
 	}
