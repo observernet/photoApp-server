@@ -81,6 +81,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 		case "version": res_code = TR_Version(c, db, rds, lang, reqData, resBody)
 		case "login": res_code = TR_Login(c, db, rds, lang, reqData, resBody)
 		case "logout": res_code = TR_Logout(c, db, rds, lang, reqData, resBody)
+		case "wslist": res_code = TR_WSList(c, db, rds, lang, reqData, resBody)
 		case "obsp_list": res_code = TR_OBSPList(c, db, rds, lang, reqData, resBody)
 		case "obsp_detail": res_code = TR_OBSPDetail(c, db, rds, lang, reqData, resBody)
 		case "wallet_obsr": res_code = TR_WalletOBSR(c, db, rds, lang, reqData, resBody)

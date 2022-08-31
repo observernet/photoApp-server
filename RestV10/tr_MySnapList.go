@@ -104,24 +104,29 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 		list = append(list, map[string]interface{} {"snapkey": snapkey, "lat": lat, "lng": lng, "url": imageUrl, "time": snap_time * 1000,
 							"labels": map[string]interface{} {
-								"st0": labels.Status_0,
-								"st1": labels.Status_1,
-								"skN": labels.Sky_N,
-								"skY": labels.Sky_Y,
-								"skF": labels.Sky_F,
-								"raN": labels.Rain_N,
-								"raY": labels.Rain_Y,
-								"raS": labels.Rain_S,
-								"wcN": labels.Wcondi_N,
-								"wcF": labels.Wcondi_F,
-								"wcH": labels.Wcondi_H,
-								"wcR": labels.Wcondi_R,
-								"wcT": labels.Wcondi_T,
-								"caN": labels.Calamity_N,
-								"caR": labels.Calamity_R,
-								"caS": labels.Calamity_S,
-								"caF": labels.Calamity_F,
-								"caL": labels.Calamity_L}})
+								"state": map[string]interface{} {
+									"st0": labels.Status_0,
+									"st1": labels.Status_1},
+								"cloud": map[string]interface{} {
+									"skN": labels.Sky_N,
+									"skY": labels.Sky_Y,
+									"skF": labels.Sky_F},
+								"rain": map[string]interface{} {
+									"raN": labels.Rain_N,
+									"raY": labels.Rain_Y,
+									"raS": labels.Rain_S},
+								"nature": map[string]interface{} {
+									"wcN": labels.Wcondi_N,
+									"wcF": labels.Wcondi_F,
+									"wcH": labels.Wcondi_H,
+									"wcR": labels.Wcondi_R,
+									"wcT": labels.Wcondi_T},
+								"calamity": map[string]interface{} {
+									"caN": labels.Calamity_N,
+									"caR": labels.Calamity_R,
+									"caS": labels.Calamity_S,
+									"caF": labels.Calamity_F,
+									"caL": labels.Calamity_L}}})
 
 		count++
 		if count >= 30 {

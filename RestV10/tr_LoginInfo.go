@@ -62,14 +62,27 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 	remain_snap_time = adminVar.Snap.Interval - remain_snap_time / 1000
 	if remain_snap_time < 0 { remain_snap_time = 0 }
 
+	// 퍼소나 등록내역이 있는지 체크한다
+	var persona_count int64
+	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + userkey + "'").Scan(&persona_count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			persona_count = 0
+		} else {
+			global.FLog.Println(err)
+			return 9901
+		}
+	}
+
 	// 응답값을 세팅한다
 	resBody["info"] = map[string]interface{} {
 							"ncode": mapUser["info"].(map[string]interface{})["NCODE"].(string),
 							"phone": mapUser["info"].(map[string]interface{})["PHONE"].(string),
 							"email": mapUser["info"].(map[string]interface{})["EMAIL"].(string),
 							"name":  mapUser["info"].(map[string]interface{})["NAME"].(string),
-							"photo": mapUser["info"].(map[string]interface{})["PHOTO"].(string),
-							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64)}
+							"photo": "https://photoapp.obsr-app.org/Image/View/profile/" + userkey,
+							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64),
+							"persona_cnt": persona_count}
 	
 	resBody["stat"] = map[string]interface{} {
 							"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),

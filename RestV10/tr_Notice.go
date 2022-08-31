@@ -46,7 +46,8 @@ func TR_Notice(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 		sort = sort * 100000 + idx
 		if link == "" { link = fmt.Sprintf("PhotoApp:Notice:%d", idx)}
 
-		list = append(list, map[string]interface{} {"type": ntype, "title": title, "body": body, "link": link, "sort": sort, "time": reg_time})
+		key := fmt.Sprintf("%d", idx)
+		list = append(list, map[string]interface{} {"key": key, "type": ntype, "title": title, "body": body, "link": link, "sort": sort, "time": reg_time})
 
 		if last_update_time < update_time { last_update_time = update_time }
 	}
