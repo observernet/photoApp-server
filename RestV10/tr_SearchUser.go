@@ -90,12 +90,24 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	code := common.GetCodeNumber(6)
 
 	// 에러카운트가 있으면 가져온다
-	var errorCount int
+	var errorCount, userCount int
 	if StepInfo != nil && StepInfo["errcnt"] != nil {
 		errorCount = (int)(StepInfo["errcnt"].(float64))
 	}
 
 	if reqBody["type"].(string) == "phone" {
+
+		// 해당 전화번호의 계정이 존재하는지 체크한다
+		err := db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "'").Scan(&userCount)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				userCount = 0
+			} else {
+				global.FLog.Println(err)
+				return 9901
+			}
+		}
+		if userCount == 0 { return 8002 }
 
 		// Redis에 캐싱값을 기록한다
 		mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_search_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "ncode": reqBody["ncode"].(string), "phone": reqBody["phone"].(string)}
@@ -108,6 +120,18 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// 인증코드를 전송한다
 		common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
 	} else {
+
+		// 해당 이메일의 계정이 존재하는지 체크한다
+		err := db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE EMAIL = '" + reqBody["email"].(string) + "'").Scan(&userCount)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				userCount = 0
+			} else {
+				global.FLog.Println(err)
+				return 9901
+			}
+		}
+		if userCount == 0 { return 8004 }
 
 		// Redis에 캐싱값을 기록한다
 		mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_search_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "email": reqBody["email"].(string)}

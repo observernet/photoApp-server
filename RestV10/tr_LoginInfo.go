@@ -88,6 +88,7 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 							"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
 							"labels": mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 							"remain_snap_time": remain_snap_time,
+							"snap_interval": adminVar.Snap.Interval,
 							"count": map[string]interface{} {
 								"snap": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64),
 								"snap_rp": mapUser["stat"].(map[string]interface{})["TODAY_SNAP_COUNT"].(float64) * adminVar.Reword.Snap,

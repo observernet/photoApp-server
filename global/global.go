@@ -120,6 +120,9 @@ type HeaderParameter struct {
 // Const Valiable
 const ConfigFile string = "config/photoApp.json"
 
+// OBSR Decimal Point
+const OBSR_PDesz int = 8
+
 // Send Code
 const SendCodeExpireSecs int = 120
 const SendCodeMaxErrors int = 5
