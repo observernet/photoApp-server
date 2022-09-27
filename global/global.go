@@ -49,6 +49,13 @@ type ServerConfig struct {
 		WSApi			string	`json:"ws_api" binding:"required"`
 		WSKey			string	`json:"ws_key" binding:"required"`
 		WSSecret		string	`json:"ws_secret" binding:"required"`
+		MailApi			string	`json:"mail_api" binding:"required"`
+		MailKey			string	`json:"mail_key" binding:"required"`
+		MailSecret		string	`json:"mail_secret" binding:"required"`
+		SMSApi			string	`json:"sms_api" binding:"required"`
+		SMSUser			string	`json:"sms_user" binding:"required"`
+		SMSKey			string	`json:"sms_key" binding:"required"`
+		SMSSender		string	`json:"sms_sender" binding:"required"`
 	} `json:"apis" binding:"required"`
 }
 
@@ -88,6 +95,11 @@ type AdminConfig struct {
 			Type		string	`json:"type" binding:"required"`
 			CertInfo	string	`json:"cert" binding:"required"`
 		} `json:"withdraw" binding:"required"`
+		Marketing struct {
+			Address		string	`json:"address" binding:"required"`
+			Type		string	`json:"type" binding:"required"`
+			CertInfo	string	`json:"cert" binding:"required"`
+		} `json:"marketing" binding:"required"`
 	} `json:"wallet" binding:"required"`
 
 	TxFee struct {

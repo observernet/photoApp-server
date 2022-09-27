@@ -43,8 +43,10 @@ func TR_Notice(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 			global.FLog.Println(err)
 			return 9901
 		}
+		reg_time = reg_time * 1000
+		update_time = update_time * 1000
 		sort = sort * 100000 + idx
-		if link == "" { link = fmt.Sprintf("PhotoApp:Notice:%d", idx)}
+		if link == "" { link = fmt.Sprintf("PhotoApp:%s:%d", ntype, idx)}
 
 		key := fmt.Sprintf("%d", idx)
 		list = append(list, map[string]interface{} {"key": key, "type": ntype, "title": title, "body": body, "link": link, "sort": sort, "time": reg_time})
@@ -53,7 +55,7 @@ func TR_Notice(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 	}
 
 	resBody["list"] = list
-	resBody["last_update_time"] = last_update_time * 1000
+	resBody["last_update_time"] = last_update_time
 
 	return 0
 }

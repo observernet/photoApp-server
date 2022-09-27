@@ -72,10 +72,10 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 
 	// 스냅리스트를 가져올 SQL을 생성한다
-	query = "SELECT AB.SNAP_DATE, AB.SNAP_IDX, AB.SNAP_TIME, AB.LATD, AB.LNGD, AB.IMAGE_URL, AB.IMAGE_TYPE, AB.IMAGE_SUB, AB.NAME, AB.PHOTO, AB.LABELS " +
+	query = "SELECT AB.SNAP_DATE, AB.SNAP_IDX, AB.SNAP_TIME, AB.LATD, AB.LNGD, AB.IMAGE_URL, AB.IMAGE_TYPE, AB.IMAGE_SUB, AB.USER_KEY, AB.NAME, AB.PHOTO, AB.LABELS " +
 			"FROM " +
 			"( " +
-			"	SELECT A.SNAP_DATE, A.SNAP_IDX, DATE_TO_UNIXTIME(A.SNAP_TIME) SNAP_TIME, A.LATD, A.LNGD, A.IMAGE_URL, A.IMAGE_TYPE, A.IMAGE_SUB, B.NAME, B.PHOTO, " +
+			"	SELECT A.SNAP_DATE, A.SNAP_IDX, DATE_TO_UNIXTIME(A.SNAP_TIME) SNAP_TIME, A.LATD, A.LNGD, A.IMAGE_URL, A.IMAGE_TYPE, A.IMAGE_SUB, A.USER_KEY, B.NAME, B.PHOTO, " +
 			"		   (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX) LABELS, " +
 			"         (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND USER_KEY = '" + userkey + "') MYLABELS " +
 			"FROM SNAP A, USER_INFO B " +
@@ -127,7 +127,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		list = append(list, map[string]interface{} {
 								"snapkey": snapkey,
 								"name":    lst["NAME"].(string),
-								"photo":   lst["PHOTO"].(string),
+								"photo":   "https://photoapp.obsr-app.org/Image/View/profile/" + lst["USER_KEY"].(string),
 								"lat":     common.GetFloat64FromNumber(lst["LATD"].(godror.Number)),
 								"lng":     common.GetFloat64FromNumber(lst["LNGD"].(godror.Number)),
 								"url":     imageUrl,

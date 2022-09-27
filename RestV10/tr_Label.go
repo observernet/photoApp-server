@@ -199,7 +199,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 		if reqBody["is_etc"].(bool) { resBody["label_etc_rp"] = adminVar.Reword.LabelEtc }
 	//}
 	resBody["stat"] = map[string]interface{} {
-		"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
+		"obsp": common.RoundFloat64(mapUser["stat"].(map[string]interface{})["OBSP"].(float64), global.OBSR_PDesz),
 		"labels": mapStat["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 		"remain_snap_time": remain_snap_time,
 		"count": map[string]interface{} {

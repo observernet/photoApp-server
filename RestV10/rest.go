@@ -74,6 +74,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 	switch reqData["trid"] {
 		case "login_info": res_code = TR_LoginInfo(c, db, rds, lang, reqData, resBody)
 		case "banner": res_code = TR_Banner(c, db, rds, lang, reqData, resBody)
+		case "popup": res_code = TR_Popup(c, db, rds, lang, reqData, resBody)
 		case "snap_list": res_code = TR_SnapList(c, db, rds, lang, reqData, resBody)
 		case "label": res_code = TR_Label(c, db, rds, lang, reqData, resBody)
 		case "ad_reword": res_code = TR_AdReword(c, db, rds, lang, reqData, resBody)

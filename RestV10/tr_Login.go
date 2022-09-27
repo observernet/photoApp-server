@@ -156,14 +156,20 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 
 	// 인증코드를 전송한다
 	if reqBody["type"].(string) == "phone" {
-		common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
+		if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "Login", code); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 	} else {
-		common.SendCode_Email(reqBody["email"].(string), code)
+		if _, err = common.MailApi_SendMail(reqBody["email"].(string), "Login", code); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 	}
 
 	// 응답값을 세팅한다
 	resBody["expire"] = global.SendCodeExpireSecs
-	resBody["code"] = code
+	//resBody["code"] = code
 
 	return 0
 }
@@ -276,7 +282,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 							"persona_cnt": persona_count}
 	
 	resBody["stat"] = map[string]interface{} {
-							"obsp": mapUser["stat"].(map[string]interface{})["OBSP"].(float64),
+							"obsp": common.RoundFloat64(mapUser["stat"].(map[string]interface{})["OBSP"].(float64), global.OBSR_PDesz),
 							"labels": mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64),
 							"remain_snap_time": remain_snap_time,
 							"snap_interval": adminVar.Snap.Interval,

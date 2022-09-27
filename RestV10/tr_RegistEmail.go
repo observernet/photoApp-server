@@ -140,11 +140,14 @@ func _RegistEmailStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{
 	}
 
 	// 인증코드를 전송한다
-	common.SendCode_Email(reqBody["email"].(string), code)
+	if _, err = common.MailApi_SendMail(reqBody["email"].(string), "RegistEmail", code); err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
 
 	// 응답값을 세팅한다
 	resBody["expire"] = global.SendCodeExpireSecs
-	resBody["code"] = code
+	//resBody["code"] = code
 
 	return 0
 }

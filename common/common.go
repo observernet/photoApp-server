@@ -201,6 +201,11 @@ func GetFloat64FromString(val string) float64 {
 	return ret
 }
 
+func RoundFloat64(val float64, pdesz int) float64 {
+	mul := math.Pow(10, float64(pdesz))
+	return math.Round(val * mul) / mul
+}
+
 func GetUserOBSP(db *sql.DB, userkey string) (float64, error) {
 
 	var err error
@@ -339,10 +344,10 @@ func CheckForbiddenWord(db *sql.DB, ftype string, word string) (bool, error) {
 	return false, nil
 }
 
-func SendCode_Phone(ncode string, phone string, code string) {
-	global.FLog.Println("SendCode_Phone", ncode, phone, code)
-}
+//func SendCode_Phone(ncode string, phone string, code string) {
+//	global.FLog.Println("SendCode_Phone", ncode, phone, code)
+//}
 
-func SendCode_Email(email string, code string) {
-	global.FLog.Println("SendCode_Email", email, code)
-}
+//func SendCode_Email(email string, code string) {
+//	global.FLog.Println("SendCode_Email", email, code)
+//}

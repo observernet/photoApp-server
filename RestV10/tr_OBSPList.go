@@ -56,7 +56,7 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			return 9901
 		}
 
-		resBody["obsp"] = map[string]interface{} {"curr": obsp, "auto": adminVar.Reword.AutoExchange}
+		resBody["obsp"] = map[string]interface{} {"curr": common.RoundFloat64(obsp, global.OBSR_PDesz), "auto": adminVar.Reword.AutoExchange}
 	}
 
 	// 보상/환전 내역을 가져온다
@@ -111,7 +111,7 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			list_date = make([]map[string]interface{}, 0)
 		}
 
-		list_date = append(list_date, map[string]interface{} {"type": row_type, "amount": row_amount})
+		list_date = append(list_date, map[string]interface{} {"type": row_type, "amount": common.RoundFloat64(row_amount, global.OBSR_PDesz)})
 		prev_date = row_date
 	}
 	if len(list_date) > 0 {

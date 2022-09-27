@@ -67,7 +67,7 @@ func TR_InoutList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 		}
 		list = append(list, map[string]interface{} {
 					"type": inout_type,
-					"amount": inout_amount,
+					"amount": common.RoundFloat64(inout_amount, global.OBSR_PDesz),
 					"from": from,
 					"to": to,
 					"txHash": txHash,

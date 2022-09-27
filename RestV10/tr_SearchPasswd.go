@@ -147,7 +147,7 @@ func _SearchPasswdStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
+		//common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
 	} else {
 
 		// Redis에 캐싱값을 기록한다
@@ -159,7 +159,7 @@ func _SearchPasswdStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Email(reqBody["email"].(string), code)
+		//common.SendCode_Email(reqBody["email"].(string), code)
 	}
 
 	// 응답값을 세팅한다

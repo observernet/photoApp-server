@@ -134,7 +134,11 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
+		 _, err := common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "UpdateUser", code)
+		 if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 
 	} else if reqBody["type"].(string) == "email" {
 
@@ -165,7 +169,11 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Email(reqBody["email"].(string), code)
+		_, err := common.MailApi_SendMail(reqBody["email"].(string), "UpdateUser", code)
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 
 	} else {
 
@@ -204,12 +212,16 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Phone(UserInfo["NCODE"].(string), UserInfo["PHONE"].(string), code)
+		if _, err = common.SMSApi_Send(UserInfo["NCODE"].(string), UserInfo["PHONE"].(string), "UpdateUser", code); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+
 	}
 
 	// 응답값을 세팅한다
 	resBody["expire"] = global.SendCodeExpireSecs
-	resBody["code"] = code
+	//resBody["code"] = code
 
 	return 0
 }

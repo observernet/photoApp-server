@@ -37,9 +37,9 @@ func TR_SendCode(c *gin.Context, db *sql.DB, rds redis.Conn, reqData map[string]
 
 	// 코드를 전송한다
 	if reqBody["type"].(string) == "phone" {
-		common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
+		//common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
 	} else {
-		common.SendCode_Email(reqBody["email"].(string), code)
+		//common.SendCode_Email(reqBody["email"].(string), code)
 	}
 
 	var err error

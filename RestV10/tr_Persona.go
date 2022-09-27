@@ -112,11 +112,11 @@ func TR_Persona(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 
 		// 에러드랍을 전송한다
 		kas, err := common.KAS_Transfer("D:" + userkey,
-										adminVar.Wallet.Exchange.Address,
+										adminVar.Wallet.Marketing.Address,
 										mapUser["wallet"].([]map[string]interface{})[0]["ADDRESS"].(string),
 										fmt.Sprintf("%f", adminVar.Reword.Persona),
-										adminVar.Wallet.Exchange.Type,
-										adminVar.Wallet.Exchange.CertInfo)
+										adminVar.Wallet.Marketing.Type,
+										adminVar.Wallet.Marketing.CertInfo)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901

@@ -149,8 +149,8 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	// 사용자에게 응답을 전송한다
 	resBody["key"] = exchange_idx
 	resBody["to"] = reqBody["to"].(string)
-	resBody["amount"] = reqBody["amount"].(float64)
-	resBody["txfee"] = txfee
+	resBody["amount"] = common.RoundFloat64(reqBody["amount"].(float64), global.OBSR_PDesz)
+	resBody["txfee"] = common.RoundFloat64(txfee, global.OBSR_PDesz)
 
 	return 0
 }

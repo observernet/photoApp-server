@@ -104,11 +104,15 @@ func _JoinOutStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, r
 	}
 
 	// 인증코드를 전송한다
-	common.SendCode_Phone(UserInfo["NCODE"].(string), UserInfo["PHONE"].(string), code)
+	_, err := common.SMSApi_Send(UserInfo["NCODE"].(string), UserInfo["PHONE"].(string), "Joinout", code)
+	if err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
 
 	// 응답값을 세팅한다
 	resBody["expire"] = global.SendCodeExpireSecs
-	resBody["code"] = code
+	//resBody["code"] = code
 
 	return 0
 }

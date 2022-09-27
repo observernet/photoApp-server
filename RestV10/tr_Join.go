@@ -129,11 +129,14 @@ func _JoinStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 인증코드를 전송한다
-	common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
+	if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "join", code); err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
 
 	// 응답값을 세팅한다
 	resBody["expire"] = global.SendCodeExpireSecs
-	resBody["code"] = code
+	//resBody["code"] = code
 
 	return 0
 }
@@ -388,11 +391,14 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Email(reqBody["email"].(string), code)
+		if _, err = common.MailApi_SendMail(reqBody["email"].(string), "Join", code); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 
 		// 응답값을 세팅한다
 		resBody["expire"] = global.SendCodeExpireSecs
-		resBody["code"] = code
+		//resBody["code"] = code
 	}
 
 	return 0

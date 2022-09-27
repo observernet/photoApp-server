@@ -35,7 +35,7 @@ func main() {
 	// Connect Database
 	db := ConnectDatabase(); defer db.Close()
 	rdp := ConnectRedis(); defer rdp.Close()
-	
+
 	// set gin framework
 	var router *gin.Engine
 	

@@ -75,9 +75,9 @@ func TR_WithdrawInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 
 	// 응답값을 세팅한다
 	resBody["wallet"] = wallets
-	resBody["txfee"] = mapFee["txfee"].(float64)
+	resBody["txfee"] = common.RoundFloat64(mapFee["txfee"].(float64), global.OBSR_PDesz)
 	resBody["base_txfee"] = adminVar.TxFee.Withdraw.Fee
-	resBody["obsr_price"] = mapFee["obsr_price"].(float64)
+	resBody["obsr_price"] = common.RoundFloat64(mapFee["obsr_price"].(float64), global.OBSR_PDesz)
 	resBody["obsr_time"] = mapFee["obsr_time"].(float64)
 	resBody["fee_ticket"] = fee_free_ticket
 	

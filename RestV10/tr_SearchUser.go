@@ -118,7 +118,10 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Phone(reqBody["ncode"].(string), reqBody["phone"].(string), code)
+		if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "SearchUser", code); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 	} else {
 
 		// 해당 이메일의 계정이 존재하는지 체크한다
@@ -142,12 +145,15 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 
 		// 인증코드를 전송한다
-		common.SendCode_Email(reqBody["email"].(string), code)
+		if _, err = common.MailApi_SendMail(reqBody["email"].(string), "SearchUser", code); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
 	}
 
 	// 응답값을 세팅한다
 	resBody["expire"] = global.SendCodeExpireSecs
-	resBody["code"] = code
+	//resBody["code"] = code
 
 	return 0
 }

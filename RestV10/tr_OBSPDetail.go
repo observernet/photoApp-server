@@ -117,7 +117,7 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 	// 조회일의 WS 보상정보를 가져온다
 	var WS _OBSPDetail_WSData
-	query = "SELECT B.SERIAL_NO, B.REWORD_AMOUNT FROM REWORD_LIST A, REWORD_DETAIL B WHERE A.REWORD_IDX = B.REWORD_IDX and DEVICE = 'W' and REWORD_DATE = " + reqBody["date"].(string) + " and PROC_STATUS = 'V'";
+	query = "SELECT B.SERIAL_NO, B.REWORD_AMOUNT FROM REWORD_LIST A, REWORD_DETAIL B WHERE A.REWORD_IDX = B.REWORD_IDX and A.DEVICE = 'W' and B.USER_KEY = '" + userkey + "' and A.REWORD_DATE = " + reqBody["date"].(string) + " and A.PROC_STATUS = 'V'";
 	rows, err := db.Query(query)
 	if err != nil {
 		global.FLog.Println(err)

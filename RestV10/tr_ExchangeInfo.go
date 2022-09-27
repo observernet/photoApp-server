@@ -63,10 +63,10 @@ func TR_ExchangeInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 	}
 
 	// 응답값을 세팅한다
-	resBody["obsp"] = obsp
-	resBody["txfee"] = mapFee["txfee"].(float64) * 2.0
+	resBody["obsp"] = common.RoundFloat64(obsp, global.OBSR_PDesz)
+	resBody["txfee"] = common.RoundFloat64(mapFee["txfee"].(float64) * 2.0, global.OBSR_PDesz)
 	resBody["base_txfee"] = adminVar.TxFee.Exchange.Fee
-	resBody["obsr_price"] = mapFee["obsr_price"].(float64)
+	resBody["obsr_price"] = common.RoundFloat64(mapFee["obsr_price"].(float64), global.OBSR_PDesz)
 	resBody["obsr_time"] = mapFee["obsr_time"].(float64)
 	resBody["klay_price"] = mapFee["klay_price"].(float64)
 	resBody["klay_time"] = mapFee["klay_time"].(float64)
