@@ -20,7 +20,7 @@ func SMSApi_Send(ncode string, phone string, templateId string, code string) (ma
 	}
 	
 	var msg string
-	if templateId == "Login" {
+	/*if templateId == "Login" {
 		msg = "Login Code [" + code + "]"
 	} else if templateId == "Join" {
 		msg = "Join Code [" + code + "]"
@@ -32,7 +32,8 @@ func SMSApi_Send(ncode string, phone string, templateId string, code string) (ma
 		msg = "UpdateUser Code [" + code + "]"
 	} else {
 		msg = "Code [" + code + "]"
-	}
+	}*/
+	msg = "OBSERVER [" + code + "] Please enter the authentication code."
 	
 	return _RequestToSMSApi(phone, msg)
 }

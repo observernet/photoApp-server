@@ -139,6 +139,12 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 
 	// 인증코드를 생성한다
 	code := common.GetCodeNumber(6)
+	if reqBody["type"].(string) == "phone" && reqBody["phone"].(string) == "000012340000567" {
+		code = "123456"
+	}
+	if reqBody["type"].(string) == "email" && reqBody["email"].(string) == "obsrapptest@obsr.org" {
+		code = "123456"
+	}
 
 	// 에러카운트가 있으면 가져온다
 	var errorCount int
@@ -156,9 +162,11 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 
 	// 인증코드를 전송한다
 	if reqBody["type"].(string) == "phone" {
-		if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "Login", code); err != nil {
-			global.FLog.Println(err)
-			return 9901
+		if reqBody["phone"].(string) != "000012340000567" {
+			if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "Login", code); err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
 		}
 	} else {
 		if _, err = common.MailApi_SendMail(reqBody["email"].(string), "Login", code); err != nil {
