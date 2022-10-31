@@ -46,6 +46,10 @@ func GetErrorMessageKOR(code int) string {
 		case 8026:	return "이메일이 등록되어 있지 않아 휴대폰 변경이 불가능합니다. 관리자에게 문의하세요"
 		case 8027:	return "이전 값과 동일합니다"
 		case 8028:	return "입력된 퍼소나 정보가 없습니다"
+		case 8029:	return "본인은 차단할수 없습니다"
+		case 8030:	return "해당 사용자가 존재하지 않습니다"
+		case 8031:	return "이미 차단한 사용자입니다"
+		case 8032:	return "차단하지 않은 사용자입니다"
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"

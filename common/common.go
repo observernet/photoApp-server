@@ -288,7 +288,7 @@ func GetTxFee(rds redis.Conn, coin string, fee float64) (map[string]interface{},
 
 		res["obsr_price"] = obsr_price
 		res["obsr_time"] = obsr_time
-		res["txfee"] = math.Round(fee / obsr_price)
+		res["txfee"] = RoundFloat64(fee / obsr_price, global.OBSR_PDesz)
 
 	} else if strings.EqualFold(coin, "KLAY") {
 
@@ -313,7 +313,7 @@ func GetTxFee(rds redis.Conn, coin string, fee float64) (map[string]interface{},
 		res["obsr_time"] = obsr_time
 		res["klay_price"] = klay_price
 		res["klay_time"] = klay_time
-		res["txfee"] = math.Round((klay_price * fee) / obsr_price)
+		res["txfee"] = RoundFloat64((klay_price * fee) / obsr_price, global.OBSR_PDesz)
 
 	} else {
 

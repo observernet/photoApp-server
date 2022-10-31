@@ -172,7 +172,7 @@ func User_UpdateStat(db *sql.DB, rds redis.Conn, userkey string) error {
 
 	// Redis에 데이타를 올린다
 	mapRedis := map[string]interface{} {
-		"OBSP": obsp,
+		"OBSP": RoundFloat64(obsp, global.OBSR_PDesz),
 		"LABEL_COUNT": label_count,
 		"LAST_SNAP_TIME": last_snap_time,
 		"TODAY_SNAP_COUNT": today_snap_count,
