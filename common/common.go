@@ -2,6 +2,7 @@ package common
 
 import (
 	"time"
+	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -206,17 +207,17 @@ func RoundFloat64(val float64, pdesz int) float64 {
 	return math.Round(val * mul) / mul
 }
 
-func GetUserOBSP(db *sql.DB, userkey string) (float64, error) {
+func GetUserOBSP(ctx context.Context, db *sql.DB, userkey string) (float64, error) {
 
 	var err error
 	var obsp, reword, exchange float64
 
-	err = db.QueryRow("SELECT NVL(SUM(A.REWORD_AMOUNT), 0) FROM REWORD_DETAIL A, REWORD_LIST B WHERE A.REWORD_IDX = B.REWORD_IDX and A.USER_KEY = '" + userkey + "' and B.PROC_STATUS = 'V'").Scan(&reword)
+	err = db.QueryRowContext(ctx, "SELECT NVL(SUM(A.REWORD_AMOUNT), 0) FROM REWORD_DETAIL A, REWORD_LIST B WHERE A.REWORD_IDX = B.REWORD_IDX and A.USER_KEY = '" + userkey + "' and B.PROC_STATUS = 'V'").Scan(&reword)
 	if err != nil {
 		return 0, err
 	}
 
-	err = db.QueryRow("SELECT NVL(SUM(PROC_AMOUNT + EXCHANGE_FEE), 0) FROM EXCHANGE_OBSP WHERE USER_KEY = '" + userkey + "' and PROC_STATUS = 'V'").Scan(&exchange)
+	err = db.QueryRowContext(ctx, "SELECT NVL(SUM(PROC_AMOUNT + EXCHANGE_FEE), 0) FROM EXCHANGE_OBSP WHERE USER_KEY = '" + userkey + "' and PROC_STATUS = 'V'").Scan(&exchange)
 	if err != nil {
 		return 0, err
 	}
@@ -227,7 +228,7 @@ func GetUserOBSP(db *sql.DB, userkey string) (float64, error) {
 	return obsp, nil
 }
 /*
-func GetTxFeeOBSP(db *sql.DB, klay_txfee float64) (float64, float64, int64, float64, int64, error) {
+func GetTxFeeOBSP(ctx context.Context, db *sql.DB, klay_txfee float64) (float64, float64, int64, float64, int64, error) {
 
 	var err error
 	var rows *sql.Rows
@@ -235,7 +236,7 @@ func GetTxFeeOBSP(db *sql.DB, klay_txfee float64) (float64, float64, int64, floa
 	var price, obsr_price, klay_price float64
 	var price_time, obsr_time, klay_time int64
 
-	if rows, err = db.Query("SELECT SYMBOL, PRICE, PRICE_TIME FROM EXCH_PRICE WHERE SYMBOL in ('OBSR', 'KLAY')"); err != nil {
+	if rows, err = db.QueryContext(ctx, "SELECT SYMBOL, PRICE, PRICE_TIME FROM EXCH_PRICE WHERE SYMBOL in ('OBSR', 'KLAY')"); err != nil {
 		return 0, 0, 0, 0, 0, err
 	}
 
@@ -328,13 +329,13 @@ func GetCoinPrice(db *sql.DB, coin string) {
 
 }
 
-func CheckForbiddenWord(db *sql.DB, ftype string, word string) (bool, error) {
+func CheckForbiddenWord(ctx context.Context, db *sql.DB, ftype string, word string) (bool, error) {
 
 	var count int64
 
 	uWord := strings.ToUpper(word)
 	query := "SELECT count(IDX) FROM FORBIDDEN_WORD WHERE (WORD_TYPE = 'S' AND UPPER(WORD) = '" + uWord + "') OR  (WORD_TYPE = 'I' AND '" + uWord + "' LIKE '%'||UPPER(WORD)||'%')"
-	err := db.QueryRow(query).Scan(&count)
+	err := db.QueryRowContext(ctx, query).Scan(&count)
 	if err != nil {
 		return false, err
 	}

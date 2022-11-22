@@ -1,6 +1,9 @@
 package RestV10
 
 import (
+	"time"
+	"context"
+
 	"photoApp-server/global"
 	"photoApp-server/common"
 
@@ -10,6 +13,9 @@ import (
 )
 
 func TR_UserBlockList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -33,7 +39,7 @@ func TR_UserBlockList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, r
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 차단 내역을 가져온다
-	rows, err := db.Query("SELECT A.BLOCK_USER_KEY, B.NAME FROM USER_BLOCK A, USER_INFO B WHERE A.BLOCK_USER_KEY = B.USER_KEY and A.USER_KEY = '" + userkey + "'")
+	rows, err := db.QueryContext(ctx, "SELECT A.BLOCK_USER_KEY, B.NAME FROM USER_BLOCK A, USER_INFO B WHERE A.BLOCK_USER_KEY = B.USER_KEY and A.USER_KEY = '" + userkey + "'")
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

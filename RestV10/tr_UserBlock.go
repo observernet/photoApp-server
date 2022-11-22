@@ -1,6 +1,9 @@
 package RestV10
 
 import (
+	"time"
+	"context"
+
 	"photoApp-server/global"
 	"photoApp-server/common"
 
@@ -10,6 +13,9 @@ import (
 )
 
 func TR_UserBlock(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -40,7 +46,7 @@ func TR_UserBlock(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 
 	// 존재하는 USER인지 체크한다
 	var count int64 = 0
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE USER_KEY = '" + reqBody["block_userkey"].(string) + "'").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE USER_KEY = '" + reqBody["block_userkey"].(string) + "'").Scan(&count)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -51,7 +57,7 @@ func TR_UserBlock(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 
 	// 이미 차단한 USER인지 체크한다
 	count = 0
-	err = db.QueryRow("SELECT count(BLOCK_USER_KEY) FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "' and BLOCK_USER_KEY = '" + reqBody["block_userkey"].(string) + "'").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT count(BLOCK_USER_KEY) FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "' and BLOCK_USER_KEY = '" + reqBody["block_userkey"].(string) + "'").Scan(&count)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -61,7 +67,7 @@ func TR_UserBlock(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 	}
 
 	// 사용자를 차단한다
-	_, err = db.Exec("INSERT INTO USER_BLOCK (USER_KEY, BLOCK_USER_KEY, BLOCK_TIME) VALUES ('" + userkey + "', '" + reqBody["block_userkey"].(string) + "', sysdate) ")
+	_, err = db.ExecContext(ctx, "INSERT INTO USER_BLOCK (USER_KEY, BLOCK_USER_KEY, BLOCK_TIME) VALUES ('" + userkey + "', '" + reqBody["block_userkey"].(string) + "', sysdate) ")
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

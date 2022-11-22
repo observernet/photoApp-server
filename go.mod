@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.7.7
-	github.com/godror/godror v0.33.0
+	github.com/godror/godror v0.35.0
 )
 
 require (
@@ -25,7 +25,7 @@ require (
 	github.com/ugorji/go/codec v1.1.7 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/sys v0.0.0-20200116001909-b77594299b42 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 	photoApp-server/RestV10 v0.0.0-00010101000000-000000000000 // indirect
 	photoApp-server/common v0.0.0-00010101000000-000000000000 // indirect

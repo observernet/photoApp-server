@@ -2,6 +2,8 @@ package RestV10
 
 import (
 	"fmt"
+	"time"
+	"context"
 	//"encoding/json"
 	
 	"photoApp-server/global"
@@ -15,6 +17,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_InoutList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -45,7 +50,7 @@ func TR_InoutList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 			 "WHERE USER_KEY = '" + userkey + "' "
 	if reqBody["next"] != nil && len(reqBody["next"].(string)) > 0 { query = query + "  and INOUT_IDX < " + reqBody["next"].(string) + " " }
 	query = query + "ORDER BY INOUT_IDX desc "
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

@@ -1,6 +1,9 @@
 package RestV10
 
-import (	
+import (
+	"time"
+	"context"
+
 	"photoApp-server/global"
 	"photoApp-server/common"
 
@@ -12,6 +15,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_UpdateWallet(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -54,7 +60,7 @@ func TR_UpdateWallet(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 	var tx *sql.Tx
 
 	// 트랜잭션 시작
-	if tx, err = db.Begin(); err != nil {
+	if tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable}); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -84,7 +90,7 @@ func TR_UpdateWallet(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 	}
 
 	// REDIS 지갑 정보를 갱신한다
-	if err = common.User_UpdateWallet(db, rds, userkey); err != nil {
+	if err = common.User_UpdateWallet(ctx, db, rds, userkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

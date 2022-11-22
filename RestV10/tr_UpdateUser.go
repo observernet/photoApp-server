@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	"strconv"
 	"strings"
 	"encoding/json"
@@ -19,6 +20,9 @@ var g_update_user_curtime int64
 // ReqData - 
 // ResData - 
 func TR_UpdateUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -68,15 +72,15 @@ func TR_UpdateUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	var res_code int
 	var step string = reqBody["step"].(string)
 	switch step {
-		case "1": res_code = _UpdateUserStep1(db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
-		case "2": res_code = _UpdateUserStep2(db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
+		case "1": res_code = _UpdateUserStep1(ctx, db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
+		case "2": res_code = _UpdateUserStep2(ctx, db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
 		default: res_code = 9003
 	}
 	
 	return res_code
 }
 
-func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
+func _UpdateUserStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
 
 	// check input
 	if reqBody["type"] == nil { return 9003 }
@@ -115,7 +119,7 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// 이미 존재하는 휴대전화인지 체크한다
 		var userCount int64
 		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "' and STATUS <> 'C'"
-		if err := db.QueryRow(query).Scan(&userCount); err != nil {
+		if err := db.QueryRowContext(ctx, query).Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
 			} else {
@@ -150,7 +154,7 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		// 이미 존재하는 이메일 인지 체크한다
 		var userCount int64
 		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(EMAIL) = '" + strings.ToUpper(reqBody["email"].(string)) + "' and STATUS <> 'C'"
-		if err := db.QueryRow(query).Scan(&userCount); err != nil {
+		if err := db.QueryRowContext(ctx, query).Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
 			} else {
@@ -184,7 +188,7 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 
 		// 닉네임이 이미 존재하는지 체크한다
 		var count int64
-		err := db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(NAME) = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
+		err := db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(NAME) = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				count = 0
@@ -196,7 +200,7 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		if count > 0 { return 8022 }
 
 		// 닉네임에 금칙어가 있는지 체크한다
-		pass, err := common.CheckForbiddenWord(db, "N", reqBody["name"].(string))
+		pass, err := common.CheckForbiddenWord(ctx, db, "N", reqBody["name"].(string))
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -226,7 +230,7 @@ func _UpdateUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	return 0
 }
 
-func _UpdateUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
+func _UpdateUserStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -278,7 +282,7 @@ func _UpdateUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 
 		// 휴대폰 정보를 갱신한다
 		query := "UPDATE USER_INFO SET NCODE = '" + StepInfo["ncode"].(string) + "', PHONE = '" + StepInfo["phone"].(string) + "', UPDATE_TIME = sysdate WHERE USER_KEY = '" + UserInfo["USER_KEY"].(string) + "'"
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -287,7 +291,7 @@ func _UpdateUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 
 		// 이메일 정보를 갱신한다
 		query := "UPDATE USER_INFO SET EMAIL = '" + StepInfo["email"].(string) + "', UPDATE_TIME = sysdate WHERE USER_KEY = '" + UserInfo["USER_KEY"].(string) + "'"
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -296,7 +300,7 @@ func _UpdateUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		
 		// 이름 정보를 갱신한다
 		query := "UPDATE USER_INFO SET NAME = '" + StepInfo["name"].(string) + "', UPDATE_TIME = sysdate WHERE USER_KEY = '" + UserInfo["USER_KEY"].(string) + "'"
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -304,7 +308,7 @@ func _UpdateUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	}
 
 	// REDIS 사용자 정보를 갱신한다
-	if err = common.User_UpdateInfo(db, rds, UserInfo["USER_KEY"].(string)); err != nil {
+	if err = common.User_UpdateInfo(ctx, db, rds, UserInfo["USER_KEY"].(string)); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

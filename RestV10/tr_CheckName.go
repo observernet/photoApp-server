@@ -1,6 +1,8 @@
 package RestV10
 
 import (
+	"time"
+	"context"
 	"strings"
 	
 	"photoApp-server/global"
@@ -17,6 +19,9 @@ import (
 //		   - web: 웹버전
 func TR_CheckName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
+
 	reqBody := reqData["body"].(map[string]interface{})
 	
 	// check input
@@ -26,7 +31,7 @@ func TR_CheckName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 
 	// 닉네임이 이미 존재하는지 체크한다
 	var count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "'").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "'").Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			count = 0
@@ -38,7 +43,7 @@ func TR_CheckName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 	if count > 0 { return 8022 }
 
 	// 닉네임에 금칙어가 있는지 체크한다
-	pass, err := common.CheckForbiddenWord(db, "N", reqBody["name"].(string))
+	pass, err := common.CheckForbiddenWord(ctx, db, "N", reqBody["name"].(string))
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

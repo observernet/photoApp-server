@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	"strconv"
 	"strings"
 	"encoding/json"
@@ -18,6 +19,9 @@ var g_search_curtime int64
 var g_search_hashkey string
 
 func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
@@ -59,8 +63,8 @@ func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	var res_code int
 	var step string = reqBody["step"].(string)
 	switch step {
-		case "1": res_code = _SearchUserStep1(db, rds, reqBody, resBody, StepInfo)
-		case "2": res_code = _SearchUserStep2(db, rds, reqBody, resBody, StepInfo)
+		case "1": res_code = _SearchUserStep1(ctx, db, rds, reqBody, resBody, StepInfo)
+		case "2": res_code = _SearchUserStep2(ctx, db, rds, reqBody, resBody, StepInfo)
 		default: res_code = 9003
 	}
 	
@@ -75,7 +79,7 @@ func TR_SearchUser(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 // ResData - expire: 만료시간 (초)
 //         - limit_time: 제한시간 (timestamp)
 //         - code: 인증코드 (6자리) - 임시, 오픈시 삭제할 예정임
-func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
+func _SearchUserStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
 
 	// 인증번호 5회 이상 실패인지 확인한다
 	if StepInfo != nil && StepInfo["block_time"] != nil {
@@ -98,7 +102,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	if reqBody["type"].(string) == "phone" {
 
 		// 해당 전화번호의 계정이 존재하는지 체크한다
-		err := db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "'").Scan(&userCount)
+		err := db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "'").Scan(&userCount)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
@@ -125,7 +129,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 	} else {
 
 		// 해당 이메일의 계정이 존재하는지 체크한다
-		err := db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE EMAIL = '" + reqBody["email"].(string) + "'").Scan(&userCount)
+		err := db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE EMAIL = '" + reqBody["email"].(string) + "'").Scan(&userCount)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
@@ -169,7 +173,7 @@ func _SearchUserStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 //         - errcnt: 오류횟수
 //         - maxerr: 최대 오류횟수
 //         - limit_time: 제한시간 (timestamp)
-func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
+func _SearchUserStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -222,7 +226,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 
 	if reqBody["type"].(string) == "phone" {
 		query = "SELECT EMAIL FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
-		if stmt, err = db.Prepare(query); err != nil {
+		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -259,7 +263,7 @@ func _SearchUserStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}
 		}
 	} else {
 		query = "SELECT PHONE FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
-		if stmt, err = db.Prepare(query); err != nil {
+		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}

@@ -35,10 +35,6 @@ type _KI_REQRES_HEADER struct
 	BodyLength		int			// _KI_BODY_LENGTH
 }
 
-// 소켓 정보
-var _KASInquiryConn net.Conn
-var _KASTransactConn net.Conn
-
 
 func KAS_CreateAccount(userkey string) (string, error) {
 	return _InquiryCallToKASConn(_KI_TRID_CREATE_ACCOUNT, "K", userkey, `{"cert":"` + global.Config.Service.AccountPool + `"}`)
@@ -62,39 +58,30 @@ func _InquiryCallToKASConn(trid string, acctype string, userkey string, sendData
 	var header _KI_REQRES_HEADER
 	var hBuff, bBuff []byte
 
-	for i := 0; i < 5; i++ {
+	// 서버에 접속한다
+	client, err := _ConnectKASInquiry()
+	if err != nil {
+		return "", nil
+	}
+	defer client.Close()
 
-		// 연결정보가 없다면 접속한다
-		if _KASInquiryConn == nil {
-			if err = _ConnectKASInquiry(); err != nil {
-				return "", nil
-			}
-		}
+	// 데이타를 전송한다
+	_, err = client.Write([]byte(sendBuff))
+	if err != nil { return "", nil }
 
-		// 데이타를 전송한다
-		_, err = _KASInquiryConn.Write([]byte(sendBuff))
-		if err != nil {
-			_KASInquiryConn.Close()
-			_KASInquiryConn = nil
-			continue
-		}
+	// 헤더를 수신한다
+	hBuff = make([]byte, _KI_HEADER_SIZE)
+	_, err = client.Read(hBuff)
+	if err != nil { return "", err }
 
-		// 헤더를 수신한다
-		hBuff = make([]byte, _KI_HEADER_SIZE)
-		_, err = _KASInquiryConn.Read(hBuff)
+	// 나머지 데이타를 수신한다
+	_ConvertKASRegResHeader(string(hBuff), &header)
+	if header.BodyLength > 0 {
+		bBuff = make([]byte, header.BodyLength)
+		_, err = client.Read(bBuff)
 		if err != nil {
 			return "", err
 		}
-
-		// 나머지 데이타를 수신한다
-		_ConvertKASRegResHeader(string(hBuff), &header)
-		if header.BodyLength > 0 {
-			bBuff = make([]byte, header.BodyLength)
-			_, err = _KASInquiryConn.Read(bBuff)
-			if err != nil { return "", err }
-		}
-
-		break
 	}
 
 	var res map[string]interface{}
@@ -130,78 +117,73 @@ func _TransactToKASConn(trid string, acctype string, userkey string, sendData st
 	var header _KI_REQRES_HEADER
 	var hBuff, bBuff []byte
 
-	for i := 0; i < 5; i++ {
+	// 서버에 접속한다
+	client, err := _ConnectKASTransact()
+	if err != nil {
+		return "", nil
+	}
+	defer client.Close()
 
-		// 연결정보가 없다면 접속한다
-		if _KASTransactConn == nil {
-			if err = _ConnectKASTransact(); err != nil {
-				return "", nil
-			}
-		}
+	// 데이타를 전송한다
+	_, err = client.Write([]byte(sendBuff))
+	if err != nil {
+		return "", nil
+	}
 
-		// 데이타를 전송한다
-		_, err = _KASTransactConn.Write([]byte(sendBuff))
-		if err != nil {
-			_KASTransactConn.Close()
-			_KASTransactConn = nil
-			continue
-		}
+	// 헤더를 수신한다
+	hBuff = make([]byte, _KI_HEADER_SIZE)
+	_, err = client.Read(hBuff)
+	if err != nil {
+		return "", err
+	}
 
-		// 헤더를 수신한다
-		hBuff = make([]byte, _KI_HEADER_SIZE)
-		_, err = _KASTransactConn.Read(hBuff)
-		if err != nil {
-			return "", err
-		}
-
-		// 나머지 데이타를 수신한다
-		_ConvertKASRegResHeader(string(hBuff), &header)
-		if header.BodyLength > 0 {
-			bBuff = make([]byte, header.BodyLength)
-			_, err = _KASTransactConn.Read(bBuff)
-			if err != nil { return "", err }
-		}
-
-		break
+	// 나머지 데이타를 수신한다
+	_ConvertKASRegResHeader(string(hBuff), &header)
+	if header.BodyLength > 0 {
+		bBuff = make([]byte, header.BodyLength)
+		_, err = client.Read(bBuff)
+		if err != nil { return "", err }
 	}
 
 	return string(bBuff), nil
 }
 
-func _ConnectKASInquiry() (error) {
-
-	var err error
+func _ConnectKASInquiry() (net.Conn, error) {
 
 	// 로그인 데이타를 생성한다
 	loginBuff := fmt.Sprintf("%s%s%-16s%s%-16s%-32s%0*d", _KI_TRID_LOGIN, _KI_REQTYPE_LOGIN, global.Config.Service.Name, " ", global.Config.Service.AccountPool, " ", _KI_BODY_LENGTH, 0)
 
 	// 서버에 연결한다
-	_KASInquiryConn, err = net.Dial("tcp", global.Config.Connector.KASInquiryHost)
-	if err != nil { return err }
+	conn, err := net.Dial("tcp", global.Config.Connector.KASInquiryHost)
+	if err != nil { return nil, err }
 
 	// 로그인 데이타를 전송한다
-	_, err = _KASInquiryConn.Write([]byte(loginBuff))
-	if err != nil { return err }
+	_, err = conn.Write([]byte(loginBuff))
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
 
-	return nil
+	return conn, nil
 }
 
-func _ConnectKASTransact() (error) {
-
-	var err error
+func _ConnectKASTransact() (net.Conn, error) {
 
 	// 로그인 데이타를 생성한다
 	loginBuff := fmt.Sprintf("%s%s%-16s%s%-16s%-32s%0*d", _KI_TRID_LOGIN, _KI_REQTYPE_LOGIN, global.Config.Service.Name, " ", global.Config.Service.AccountPool, " ", _KI_BODY_LENGTH, 0)
 
 	// 서버에 연결한다
-	_KASTransactConn, err = net.Dial("tcp", global.Config.Connector.KASTransactHost)
-	if err != nil { return err }
+	conn, err := net.Dial("tcp", global.Config.Connector.KASTransactHost)
+	if err != nil { return nil, err }
 
 	// 로그인 데이타를 전송한다
-	_, err = _KASTransactConn.Write([]byte(loginBuff))
-	if err != nil { return err }
+	_, err = conn.Write([]byte(loginBuff))
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
 
-	return nil
+	return conn, nil
 }
 
 func _ConvertKASRegResHeader(stream string, header *_KI_REQRES_HEADER) {

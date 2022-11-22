@@ -1,6 +1,8 @@
 package RestV10
 
 import (
+	"time"
+	"context"
 	//"encoding/json"
 	
 	"photoApp-server/global"
@@ -14,6 +16,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -50,7 +55,7 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		}
 
 		// OBSP 잔액을 가져온다
-		obsp, err := common.GetUserOBSP(db, userkey)
+		obsp, err := common.GetUserOBSP(ctx, db, userkey)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -81,7 +86,7 @@ func TR_OBSPList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			 ") " +
 			 "GROUP BY D, T " +
 			 "ORDER BY D desc, T desc";
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

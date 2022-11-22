@@ -1,6 +1,9 @@
 package RestV10
 
 import (
+	"time"
+	"context"
+
 	"photoApp-server/global"
 	"photoApp-server/common"
 
@@ -12,6 +15,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_WSList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -48,7 +54,7 @@ func TR_WSList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 	}
 
 	// 웨더스테이션 리스트를 가져온다
-	rows, err := db.Query("SELECT SERIAL_NO FROM USER_MWS_INFO WHERE USER_KEY = '" + userkey + "' and IS_USE = 'Y'")
+	rows, err := db.QueryContext(ctx, "SELECT SERIAL_NO FROM USER_MWS_INFO WHERE USER_KEY = '" + userkey + "' and IS_USE = 'Y'")
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

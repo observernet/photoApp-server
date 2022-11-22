@@ -3,6 +3,7 @@ package RestV10
 import (
 	"fmt"
 	"time"
+	"context"
 	//"encoding/json"
 	
 	"photoApp-server/global"
@@ -26,6 +27,9 @@ import (
 //         - labelkey: 라벨키
 //         - rp: 오늘 RP {snap: }
 func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -81,7 +85,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	query := "SELECT USER_KEY, IS_SHOW, UPLOAD_STATUS, (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE and SNAP_IDX = A.SNAP_IDX and USER_KEY = '" + userkey + "') " +
 	         "FROM SNAP A " +
 			 "WHERE SNAP_DATE = " + snap_date + " and SNAP_IDX = " + snap_idx;
-	err = db.QueryRow(query).Scan(&row_user_key, &row_is_show, &row_upload_status, &row_mylabels)
+	err = db.QueryRowContext(ctx, query).Scan(&row_user_key, &row_is_show, &row_upload_status, &row_mylabels)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 8104
@@ -100,7 +104,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	// 라벨건수를 가져온다
 	var row_labels int64
 	query = "SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = " + snap_date + " and SNAP_IDX = " + snap_idx;
-	err = db.QueryRow(query).Scan(&row_labels)
+	err = db.QueryRowContext(ctx, query).Scan(&row_labels)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -113,7 +117,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	var labelIdx int64
 
 	// 트랜잭션 시작
-	tx, err = db.Begin()
+	tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -182,7 +186,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	//////////////////////////////////////////
 
 	// 캐쉬를 기록한다 기록한다
-	common.User_UpdateStat(db, rds, userkey)
+	common.User_UpdateStat(ctx, db, rds, userkey)
 
 	// 통계정보를 가져온다
 	mapStat, _ := common.User_GetInfo(rds, userkey)

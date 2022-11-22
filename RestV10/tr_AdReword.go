@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	
 	"photoApp-server/global"
 	"photoApp-server/common"
@@ -14,6 +15,9 @@ import (
 // ReqData - loginkey: 로그인키
 // ResData - stat
 func TR_AdReword(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -51,14 +55,14 @@ func TR_AdReword(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 라벨 갯수를 증가한다
-	_, err = db.Exec("UPDATE USER_INFO SET LABEL_COUNT = LABEL_COUNT + :1 WHERE USER_KEY = :2 ", adminVar.Label.AddAdLabel, userkey)
+	_, err = db.ExecContext(ctx, "UPDATE USER_INFO SET LABEL_COUNT = LABEL_COUNT + :1 WHERE USER_KEY = :2 ", adminVar.Label.AddAdLabel, userkey)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
 
 	// 캐쉬를 기록한다 기록한다
-	common.User_UpdateStat(db, rds, userkey)
+	common.User_UpdateStat(ctx, db, rds, userkey)
 
 	// 통계정보를 가져온다
 	mapStat, _ := common.User_GetInfo(rds, userkey)

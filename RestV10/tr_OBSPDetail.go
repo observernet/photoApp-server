@@ -1,6 +1,8 @@
 package RestV10
 
 import (
+	"time"
+	"context"
 	"strconv"
 	//"encoding/json"
 	
@@ -17,6 +19,9 @@ type _OBSPDetail_APPData struct {
 		Reword			float64
 		RPTotal			float64
 		CountUser		int64
+		UnitRPSnap 		float64
+		UnitRPLabel 	float64
+		UnitRPLabelEtc	float64
 	}
 	U struct {
 		Reword			float64
@@ -46,6 +51,9 @@ type _OBSPDetail_ExData struct {
 // ResData - 
 func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
+
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
 
@@ -56,11 +64,11 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	var err error
 
 	// 관리자 정의변수를 가져온다
-	var adminVar global.AdminConfig
-	if adminVar, err = common.GetAdminVar(rds); err != nil {
-		global.FLog.Println(err)
-		return 9901
-	}
+	//var adminVar global.AdminConfig
+	//if adminVar, err = common.GetAdminVar(rds); err != nil {
+	//	global.FLog.Println(err)
+	//	return 9901
+	//}
 
 	// 유저 정보를 가져온다
 	var mapUser map[string]interface{}
@@ -80,8 +88,8 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	// 조회일의 앱 전체 보상정보를 가져온다
 	var reword_idx int64
 	var APP _OBSPDetail_APPData
-	query := "SELECT REWORD_IDX, TOTAL_REWORD, TOTAL_RP, COUNT_USER FROM REWORD_LIST WHERE DEVICE = 'P' AND REWORD_DATE = " + reqBody["date"].(string) + " AND PROC_STATUS = 'V'";
-	err = db.QueryRow(query).Scan(&reword_idx, &APP.T.Reword, &APP.T.RPTotal, &APP.T.CountUser)
+	query := "SELECT REWORD_IDX, TOTAL_REWORD, TOTAL_RP, COUNT_USER, UNIT_SNAP_RP, UNIT_LABEL_RP, UNIT_LABEL_ETC_RP FROM REWORD_LIST WHERE DEVICE = 'P' AND REWORD_DATE = " + reqBody["date"].(string) + " AND PROC_STATUS = 'V'";
+	err = db.QueryRowContext(ctx, query).Scan(&reword_idx, &APP.T.Reword, &APP.T.RPTotal, &APP.T.CountUser, &APP.T.UnitRPSnap, &APP.T.UnitRPLabel, &APP.T.UnitRPLabelEtc)
 	if err != nil && err != sql.ErrNoRows {
 		global.FLog.Println(err)
 		return 9901
@@ -93,7 +101,7 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 				"FROM REWORD_DETAIL " +
 				"WHERE REWORD_IDX = " + strconv.FormatInt(reword_idx, 10) + " " +
 				"  AND USER_KEY = '" + userkey + "'";
-		err = db.QueryRow(query).Scan(&APP.U.Reword, &APP.U.RPTotal, &APP.U.RPSnap, &APP.U.RPLabel, &APP.U.RPLabelEtc, &APP.U.CountSnap, &APP.U.CountLabel, &APP.U.CountLabelEtc)
+		err = db.QueryRowContext(ctx, query).Scan(&APP.U.Reword, &APP.U.RPTotal, &APP.U.RPSnap, &APP.U.RPLabel, &APP.U.RPLabelEtc, &APP.U.CountSnap, &APP.U.CountLabel, &APP.U.CountLabelEtc)
 		if err != nil && err != sql.ErrNoRows {
 			global.FLog.Println(err)
 			return 9901
@@ -111,14 +119,16 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 									"my_action": (APP.U.RPTotal / APP.T.RPTotal) * 100,
 									"avg_action": ((APP.T.RPTotal / (float64)(APP.T.CountUser)) / APP.T.RPTotal) * 100},
 							"snap": map[string]interface{} {"rp": APP.U.RPSnap, "cnt": APP.U.CountSnap},
-							"label": map[string]interface{} {"rp": APP.U.RPLabel, "cnt": APP.U.CountLabel, "cnt_pass": APP.U.RPLabel / adminVar.Reword.Label},
-							"label_etc": map[string]interface{} {"rp": APP.U.RPLabelEtc, "cnt": APP.U.CountLabelEtc, "cnt_pass": APP.U.RPLabelEtc / adminVar.Reword.LabelEtc}}
+							"label": map[string]interface{} {"rp": APP.U.RPLabel, "cnt": APP.U.CountLabel, "cnt_pass": APP.U.RPLabel / APP.T.UnitRPLabel},
+							"label_etc": map[string]interface{} {"rp": APP.U.RPLabelEtc, "cnt": APP.U.CountLabelEtc, "cnt_pass": APP.U.RPLabelEtc / APP.T.UnitRPLabelEtc}}
+	//						"label": map[string]interface{} {"rp": APP.U.RPLabel, "cnt": APP.U.CountLabel, "cnt_pass": APP.U.RPLabel / adminVar.Reword.Label},
+	//						"label_etc": map[string]interface{} {"rp": APP.U.RPLabelEtc, "cnt": APP.U.CountLabelEtc, "cnt_pass": APP.U.RPLabelEtc / adminVar.Reword.LabelEtc}}
 	}
 
 	// 조회일의 WS 보상정보를 가져온다
 	var WS _OBSPDetail_WSData
 	query = "SELECT B.SERIAL_NO, B.REWORD_AMOUNT FROM REWORD_LIST A, REWORD_DETAIL B WHERE A.REWORD_IDX = B.REWORD_IDX and A.DEVICE = 'W' and B.USER_KEY = '" + userkey + "' and A.REWORD_DATE = " + reqBody["date"].(string) + " and A.PROC_STATUS = 'V'";
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -171,7 +181,7 @@ func TR_OBSPDetail(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	// 조회일의 환전 정보를 가져온다
 	var ExData _OBSPDetail_ExData
 	query = "SELECT NVL(SUM(PROC_AMOUNT), 0), NVL(SUM(EXCHANGE_FEE), 0) FROM EXCHANGE_OBSP WHERE USER_KEY = '" + userkey + "' and TO_CHAR(REQ_TIME, 'RRRRMMDD') = " + reqBody["date"].(string) + " and PROC_STATUS = 'V'";
-	err = db.QueryRow(query).Scan(&ExData.Amount, &ExData.Fee)
+	err = db.QueryRowContext(ctx, query).Scan(&ExData.Amount, &ExData.Fee)
 	if err != nil && err != sql.ErrNoRows {
 		global.FLog.Println(err)
 		return 9901

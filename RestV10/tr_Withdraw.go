@@ -2,6 +2,8 @@ package RestV10
 
 import (
 	"fmt"
+	"time"
+	"context"
 	"strings"
 	"encoding/json"
 	
@@ -16,6 +18,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -74,7 +79,7 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 
 	// 처리중인 출금내역이 있는지 체크한다
 	var count_prev_request int64
-	err = db.QueryRow("SELECT count(WITHDRAW_IDX) FROM WITHDRAW_OBSR WHERE USER_KEY = '" + userkey + "' and PROC_STATUS = 'A'").Scan(&count_prev_request)
+	err = db.QueryRowContext(ctx, "SELECT count(WITHDRAW_IDX) FROM WITHDRAW_OBSR WHERE USER_KEY = '" + userkey + "' and PROC_STATUS = 'A'").Scan(&count_prev_request)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -110,7 +115,7 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 	
 	// 출금 내역을 DB에 기록한다
-	withdraw_idx, err := _WithdrawInsertDB(db, userkey, reqBody["amount"].(float64), reqBody["from"].(string), reqBody["to"].(string), txfee)
+	withdraw_idx, err := _WithdrawInsertDB(ctx, db, userkey, reqBody["amount"].(float64), reqBody["from"].(string), reqBody["to"].(string), txfee)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -130,7 +135,7 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 
 		// 환전 내역에 데이타키를 세팅한다
 		query := fmt.Sprintf("UPDATE WITHDRAW_OBSR SET KASCONN_KEY = '%d' WHERE WITHDRAW_IDX = %d", (int64)(mapKAS["msg"].(float64)), withdraw_idx)
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -153,7 +158,7 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		query := fmt.Sprintf("UPDATE WITHDRAW_OBSR SET PROC_TIME = sysdate, PROC_AMOUNT = 0, WITHDRAW_FEE = 0, PROC_STATUS = 'Z', MEMO = '%s', UPDATE_TIME = sysdate " +
 							 "WHERE WITHDRAW_IDX = %d",
 							 mapKAS["msg"].(string), withdraw_idx)
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -172,20 +177,20 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	return 0
 }
 
-func _WithdrawInsertDB(db *sql.DB, userkey string, amount float64, from string, to string, txfee float64) (int64, error) {
+func _WithdrawInsertDB(ctx context.Context, db *sql.DB, userkey string, amount float64, from string, to string, txfee float64) (int64, error) {
 
 	var err error
 	var withdraw_idx int64
 
 	// 환전키를 가져온다
-	err = db.QueryRow("SELECT NVL(MAX(WITHDRAW_IDX), 0) + 1 FROM WITHDRAW_OBSR").Scan(&withdraw_idx)
+	err = db.QueryRowContext(ctx, "SELECT NVL(MAX(WITHDRAW_IDX), 0) + 1 FROM WITHDRAW_OBSR").Scan(&withdraw_idx)
 	if err != nil { return 0, err }
 
 	// 출금내역을 저장한다 (Auto commit)
 	query := fmt.Sprintf("INSERT INTO WITHDRAW_OBSR (WITHDRAW_IDX, USER_KEY, REQ_TYPE, REQ_TIME, REQ_AMOUNT, FROM_ADDRESS, TO_ADDRESS, WITHDRAW_FEE, PROC_STATUS, UPDATE_TIME) " +
 						 "VALUES (%d, '%s', 'U', sysdate, %f, '%s', '%s', %f, 'A', sysdate) ",
 						 withdraw_idx, userkey, amount, from, to, txfee)
-	_, err = db.Exec(query)					 
+	_, err = db.ExecContext(ctx, query)					 
 	if err != nil { return 0, err }
 
 	return withdraw_idx, nil

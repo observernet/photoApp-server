@@ -1,6 +1,9 @@
 package RestV10
 
-import (	
+import (
+	"time"
+	"context"
+
 	"photoApp-server/global"
 
 	"database/sql"
@@ -12,12 +15,15 @@ import (
 // ResData -
 func TR_Popup(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
+
 	//reqBody := reqData["body"].(map[string]interface{})
 
 	// 팝업 리스트를 가져온다
 	query := "SELECT TITLE, BODY, LANG, IS_VISIBLE " +
 			 "FROM MAIN_POPUP "
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

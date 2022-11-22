@@ -1,6 +1,8 @@
 package RestV10
 
 import (
+	"time"
+	"context"
 	"strings"
 
 	"photoApp-server/global"
@@ -14,6 +16,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_UpdateName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -46,7 +51,7 @@ func TR_UpdateName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 	// 닉네임이 이미 존재하는지 체크한다
 	var count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(NAME) = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(NAME) = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			count = 0
@@ -58,7 +63,7 @@ func TR_UpdateName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	if count > 0 { return 8022 }
 
 	// 닉네임에 금칙어가 있는지 체크한다
-	pass, err := common.CheckForbiddenWord(db, "N", reqBody["name"].(string))
+	pass, err := common.CheckForbiddenWord(ctx, db, "N", reqBody["name"].(string))
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -67,14 +72,14 @@ func TR_UpdateName(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 	// 이름 정보를 갱신한다
 	query := "UPDATE USER_INFO SET NAME = '" + reqBody["name"].(string) + "', UPDATE_TIME = sysdate WHERE USER_KEY = '" + userkey + "'"
-	_, err = db.Exec(query)
+	_, err = db.ExecContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
 
 	// REDIS 사용자 정보를 갱신한다
-	if err = common.User_UpdateInfo(db, rds, userkey); err != nil {
+	if err = common.User_UpdateInfo(ctx, db, rds, userkey); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}

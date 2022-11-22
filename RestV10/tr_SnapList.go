@@ -3,6 +3,7 @@ package RestV10
 import (
 	"fmt"
 	"time"
+	"context"
 	"strconv"
 	//"encoding/json"
 	
@@ -19,6 +20,9 @@ import (
 //         - exclude: 제외스냅키리스트
 // ResData - list: 스냅리스트 {snapkey: 스냅키, name: 스냅제공자, photo: 스냅제공자프로필, lat:위도, lng: 경도, url: 이미지링크, time: 스냅시간, labels: 현재라벨수}
 func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -90,7 +94,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	  		"  and AB.LABELS < " + strconv.FormatInt(adminVar.Label.MaxPerSnap, 10) + " " +
 	  		"  and MYLABELS = 0 " +
 		    "ORDER BY DBMS_RANDOM.VALUE "
-	if stmt, err = db.Prepare(query); err != nil {
+	if stmt, err = db.PrepareContext(ctx, query); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -127,6 +131,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 
 		list = append(list, map[string]interface{} {
 								"snapkey": snapkey,
+								"userkey": lst["USER_KEY"].(string),
 								"name":    lst["NAME"].(string),
 								"photo":   "https://photoapp.obsr-app.org/Image/View/profile/" + lst["USER_KEY"].(string),
 								"lat":     common.GetFloat64FromNumber(lst["LATD"].(godror.Number)),

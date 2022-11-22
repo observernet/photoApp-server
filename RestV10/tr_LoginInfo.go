@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 
 	"photoApp-server/global"
 	"photoApp-server/common"
@@ -16,6 +17,9 @@ import (
 //         - wallet: 지갑정보
 //         - reason: 정책위반사유
 func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -64,7 +68,7 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 
 	// 퍼소나 등록내역이 있는지 체크한다
 	var persona_count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + userkey + "'").Scan(&persona_count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + userkey + "'").Scan(&persona_count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			persona_count = 0
@@ -82,6 +86,7 @@ func TR_LoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 							"name":  mapUser["info"].(map[string]interface{})["NAME"].(string),
 							"photo": "https://photoapp.obsr-app.org/Image/View/profile/" + userkey,
 							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64),
+							"promotion": mapUser["info"].(map[string]interface{})["PROMOTION"].(string),
 							"persona_cnt": persona_count}
 	
 	resBody["stat"] = map[string]interface{} {

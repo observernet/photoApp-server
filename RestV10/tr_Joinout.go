@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	"strconv"
 	"encoding/json"
 
@@ -18,6 +19,9 @@ var g_joinout_curtime int64
 // ReqData - 
 // ResData - 
 func TR_JoinOut(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -67,15 +71,15 @@ func TR_JoinOut(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 	var res_code int
 	var step string = reqBody["step"].(string)
 	switch step {
-		case "1": res_code = _JoinOutStep1(db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
-		case "2": res_code = _JoinOutStep2(db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
+		case "1": res_code = _JoinOutStep1(ctx, db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
+		case "2": res_code = _JoinOutStep2(ctx, db, rds, reqBody, resBody, mapUser["info"].(map[string]interface{}), StepInfo)
 		default: res_code = 9003
 	}
 	
 	return res_code
 }
 
-func _JoinOutStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
+func _JoinOutStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
 
 	// 인증번호 5회 이상 실패인지 확인한다
 	if StepInfo != nil && StepInfo["block_time"] != nil {
@@ -117,7 +121,7 @@ func _JoinOutStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, r
 	return 0
 }
 
-func _JoinOutStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
+func _JoinOutStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, UserInfo map[string]interface{}, StepInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -167,7 +171,7 @@ func _JoinOutStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, r
 
 	// 회원 정보를 갱신한다 (해지)
 	query := "UPDATE USER_INFO SET STATUS = 'C', CLOSE_TIME = sysdate, UPDATE_TIME = sysdate WHERE USER_KEY = '" + UserInfo["USER_KEY"].(string) + "'"
-	_, err = db.Exec(query)
+	_, err = db.ExecContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

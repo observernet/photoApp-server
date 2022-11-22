@@ -102,6 +102,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 		case "search_passwd": res_code = TR_SearchPasswd(c, db, rds, lang, reqData, resBody)
 		case "update_user": res_code = TR_UpdateUser(c, db, rds, lang, reqData, resBody)
 		case "update_name": res_code = TR_UpdateName(c, db, rds, lang, reqData, resBody)
+		case "update_promotion": res_code = TR_UpdatePromotion(c, db, rds, lang, reqData, resBody)
 		case "persona": res_code = TR_Persona(c, db, rds, lang, reqData, resBody)
 		case "joinout": res_code = TR_JoinOut(c, db, rds, lang, reqData, resBody)
 		case "userblock": res_code = TR_UserBlock(c, db, rds, lang, reqData, resBody)

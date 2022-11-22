@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	"strings"
 	"strconv"
 	"encoding/json"
@@ -19,6 +20,9 @@ var g_join_rkey string
 var g_join_phone string
 
 func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
@@ -56,10 +60,10 @@ func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	var res_code int
 	var step string = reqBody["step"].(string)
 	switch step {
-		case "1": res_code = _JoinStep1(db, rds, reqBody, resBody, joinInfo)
-		case "2": res_code = _JoinStep2(db, rds, reqBody, resBody, joinInfo)
-		case "3": res_code = _JoinStep3(db, rds, reqBody, resBody, joinInfo)
-		case "4": res_code = _JoinStep4(db, rds, reqBody, resBody, joinInfo)
+		case "1": res_code = _JoinStep1(ctx, db, rds, reqBody, resBody, joinInfo)
+		case "2": res_code = _JoinStep2(ctx, db, rds, reqBody, resBody, joinInfo)
+		case "3": res_code = _JoinStep3(ctx, db, rds, reqBody, resBody, joinInfo)
+		case "4": res_code = _JoinStep4(ctx, db, rds, reqBody, resBody, joinInfo)
 		default: res_code = 9003
 	}
 	
@@ -74,7 +78,7 @@ func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 // ResData - expire: 만료시간 (초)
 //         - limit_time: 제한시간 (timestamp)
 //         - code: 인증코드 (6자리) - 임시, 오픈시 삭제할 예정임
-func _JoinStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
+func _JoinStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
 
 	// check input
 	if reqBody["promotion"] == nil || reqBody["force"] == nil { return 9003 }
@@ -94,7 +98,7 @@ func _JoinStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	// 이미 존재하는 계정인지 체크한다
 	if reqBody["force"].(bool) == false {
 		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "' and STATUS <> 'C'"
-		if err = db.QueryRow(query).Scan(&userCount); err != nil {
+		if err = db.QueryRowContext(ctx, query).Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
 			} else {
@@ -149,7 +153,7 @@ func _JoinStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 //         - errcnt: 오류횟수
 //         - maxerr: 최대 오류횟수
 //         - limit_time: 제한시간 (timestamp)
-func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
+func _JoinStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -224,7 +228,7 @@ func _JoinStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 //         - limit_time: 제한시간 (timestamp)
 //         - code: 인증코드 (6자리) - 임시, 오픈시 삭제할 예정임
 //         - userkey: 사용자 고유키 (link가 false 경우)
-func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
+func _JoinStep3(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
 	
 	link := "Y"
 	if reqBody["link"] == nil || reqBody["link"].(bool) == false { link = "N" }
@@ -250,7 +254,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 	// 닉네임이 이미 존재하는지 체크한다
 	var count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE NAME = '" + strings.ToUpper(reqBody["name"].(string)) + "' and STATUS <> 'C'").Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			count = 0
@@ -262,7 +266,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	if count > 0 { return 8022 }
 
 	// 닉네임에 금칙어가 있는지 체크한다
-	pass, err := common.CheckForbiddenWord(db, "N", reqBody["name"].(string))
+	pass, err := common.CheckForbiddenWord(ctx, db, "N", reqBody["name"].(string))
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -276,7 +280,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		var userkey, address string
 
 		// 유저키를 가져온다
-		if userkey, err = _JoinGetUserKey(db); err != nil {
+		if userkey, err = _JoinGetUserKey(ctx, db); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -288,7 +292,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 		}
 
 		// 트랜잭션 시작
-		if tx, err = db.Begin(); err != nil {
+		if tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable}); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -341,8 +345,8 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 
 		// 이미 존재하는 이메일 인지 체크한다
 		var userCount int64
-		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(EMAIL) = '" + strings.ToUpper(reqBody["email"].(string)) + "' and STATUS <> 'C'"
-		if err = db.QueryRow(query).Scan(&userCount); err != nil {
+		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE UPPER(EMAIL) = '" + strings.ToUpper(reqBody["email"].(string)) + "'"
+		if err = db.QueryRowContext(ctx, query).Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
 			} else {
@@ -411,7 +415,7 @@ func _JoinStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 //         - email: 연동이메일
 //         - code: 이메일로 전송한 6자리 코드
 // ResData - userkey: 사용자 고유키
-func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
+func _JoinStep4(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, joinInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -475,7 +479,7 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 유저키를 가져온다
-	if userkey, err = _JoinGetUserKey(db); err != nil {
+	if userkey, err = _JoinGetUserKey(ctx, db); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -495,7 +499,7 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	}
 
 	// 트랜잭션 시작
-	if tx, err = db.Begin(); err != nil {
+	if tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable}); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -602,7 +606,7 @@ func _JoinStep4(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resB
 	return 0
 }
 
-func _JoinGetUserKey(db *sql.DB) (string, error) {
+func _JoinGetUserKey(ctx context.Context, db *sql.DB) (string, error) {
 
 	var err error
 	//var stmt *sql.Stmt
@@ -612,7 +616,7 @@ func _JoinGetUserKey(db *sql.DB) (string, error) {
 	for {
 		userKey = common.GetCodeKey(16)
 
-		if err = db.QueryRow("SELECT count(USER_KEY) FROM USER_INFO WHERE USER_KEY = '" + userKey + "'").Scan(&userCount); err != nil {
+		if err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_INFO WHERE USER_KEY = '" + userKey + "'").Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
 			} else {

@@ -2,6 +2,7 @@ package global
 
 import (
 	"log"
+	"time"
 )
 
 // Config
@@ -24,7 +25,9 @@ type ServerConfig struct {
 
 	Database struct {
 		Driver       	string `json:"driver" binding:"required"`
-		Name         	string `json:"name" binding:"required"`
+		User         	string `json:"user" binding:"required"`
+		Password        string `json:"password" binding:"required"`
+		ConnectString   string `json:"connectString" binding:"required"`
 		MaxOpenConns 	int    `json:"max_open_conns binding:"required"`
 		MaxIdleConns 	int    `json:"max_idle_conns binding:"required"`
 		WS_Name         string `json:"ws_name" binding:"required"`
@@ -142,6 +145,8 @@ const SendCodeBlockSecs int = 86400
 
 //const LoginMaxErrors int = 5
 //const LoginBlockSecs int = 86400
+
+const DBContextTimeout time.Duration = 5
 
 // Global Variable
 var Config ServerConfig

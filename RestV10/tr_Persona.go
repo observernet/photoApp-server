@@ -2,6 +2,8 @@ package RestV10
 
 import (
 	"fmt"
+	"time"
+	"context"
 	"strings"
 
 	"photoApp-server/global"
@@ -20,6 +22,9 @@ type _PersonaData struct {
 // ReqData - 
 // ResData - 
 func TR_Persona(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -79,7 +84,7 @@ func TR_Persona(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 
 	// 등록된 내역이 있는지 체크한다
 	var count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + userkey + "'").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + userkey + "'").Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			count = 0
@@ -104,7 +109,7 @@ func TR_Persona(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 
 		// 데이타를 삽입한다
 		query := "INSERT INTO USER_PERSONA (" + columns + ") VALUES (" + values + ")"
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -136,7 +141,7 @@ func TR_Persona(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 		query = query + "WHERE USER_KEY = '" + userkey + "'"
 
 		// 데이타를 갱신한다
-		_, err = db.Exec(query)
+		_, err = db.ExecContext(ctx, query)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901

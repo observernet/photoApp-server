@@ -2,6 +2,8 @@ package RestV10
 
 import (
 	"fmt"
+	"time"
+	"context"
 	
 	"photoApp-server/global"
 
@@ -13,6 +15,9 @@ import (
 // ReqData - 
 // ResData -
 func TR_Notice(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	reqBody := reqData["body"].(map[string]interface{})
 
@@ -26,7 +31,7 @@ func TR_Notice(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 			 "FROM NOTICE " + 
 			 "WHERE DATE_TO_UNIXTIME(UPDATE_TIME) > " + fmt.Sprintf("%d", last_update_time) +
 			 "ORDER BY SORT desc, IDX desc"
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

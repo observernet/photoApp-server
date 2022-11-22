@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	"strconv"
 	"encoding/json"
 
@@ -17,6 +18,9 @@ var g_login_curtime int64
 var g_login_hashkey string
 
 func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
@@ -59,8 +63,8 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	var res_code int
 	var step string = reqBody["step"].(string)
 	switch step {
-		case "1": res_code = _LoginStep1(db, rds, reqBody, resBody, loginInfo)
-		case "2": res_code = _LoginStep2(db, rds, reqBody, resBody, loginInfo)
+		case "1": res_code = _LoginStep1(ctx, db, rds, reqBody, resBody, loginInfo)
+		case "2": res_code = _LoginStep2(ctx, db, rds, reqBody, resBody, loginInfo)
 		default: res_code = 9003
 	}
 	
@@ -76,7 +80,7 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 //         - limit_time: 제한시간 (timestamp)
 //         - reason: 정책위반사유
 //         - code: 인증코드 (6자리) - 임시, 오픈시 삭제할 예정임
-func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, loginInfo map[string]interface{}) int {
+func _LoginStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, loginInfo map[string]interface{}) int {
 
 	// 인증번호 5회 이상 실패인지 확인한다
 	if loginInfo != nil && loginInfo["block_time"] != nil {
@@ -95,7 +99,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 	// 계정정보를 가져온다
 	if reqBody["type"].(string) == "phone" {
 		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
-		if stmt, err = db.Prepare(query); err != nil {
+		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -111,7 +115,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 		}
 	} else {
 		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
-		if stmt, err = db.Prepare(query); err != nil {
+		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -193,7 +197,7 @@ func _LoginStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 //         - errcnt: 오류횟수
 //         - maxerr: 최대 오류횟수
 //         - limit_time: 제한시간 (timestamp)
-func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, loginInfo map[string]interface{}) int {
+func _LoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, loginInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -243,7 +247,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 
 	// 로그인을 처리한다
 	var loginkey string
-	if loginkey, err = common.User_Login(db, rds, loginInfo["userkey"].(string)); err != nil {
+	if loginkey, err = common.User_Login(ctx, db, rds, loginInfo["userkey"].(string)); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
@@ -267,7 +271,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 
 	// 퍼소나 등록내역이 있는지 체크한다
 	var persona_count int64
-	err = db.QueryRow("SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + loginInfo["userkey"].(string) + "'").Scan(&persona_count)
+	err = db.QueryRowContext(ctx, "SELECT count(USER_KEY) FROM USER_PERSONA WHERE USER_KEY = '" + loginInfo["userkey"].(string) + "'").Scan(&persona_count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			persona_count = 0
@@ -287,6 +291,7 @@ func _LoginStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, res
 							"name":  mapUser["info"].(map[string]interface{})["NAME"].(string),
 							"photo": "https://photoapp.obsr-app.org/Image/View/profile/" + loginInfo["userkey"].(string),
 							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64),
+							"promotion": mapUser["info"].(map[string]interface{})["PROMOTION"].(string),
 							"persona_cnt": persona_count}
 	
 	resBody["stat"] = map[string]interface{} {

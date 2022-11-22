@@ -15,8 +15,10 @@ import (
 	//"photoApp-server/common"
 	"photoApp-server/RestV10"
 
+	"net/http"
 	"github.com/gin-gonic/gin"
-	_ "github.com/godror/godror"
+	"github.com/godror/godror"
+	"github.com/godror/godror/dsn"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -44,7 +46,7 @@ func main() {
 		gin.DisableConsoleColor()
 		
 		// Gin Log File Setting
-		fgin, err := os.OpenFile("log/" + global.Config.Service.Name + "-gin.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		fgin, err := os.OpenFile("log/" + global.Config.Service.Name + "-gin." + time.Now().Format("20060102") + ".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			panic(err)
 		}
@@ -64,7 +66,16 @@ func main() {
 		RestV10.ProcRestV10(c, db, rdp)
 	})
 	
-	router.RunTLS(global.Config.WWW.HttpHost, global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
+	s := &http.Server{
+		Addr:           global.Config.WWW.HttpHost,
+		Handler:        router,
+		ReadTimeout:    3 * time.Second,
+		WriteTimeout:   3 * time.Second,
+		IdleTimeout:	5 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	s.ListenAndServeTLS(global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
+	//router.RunTLS(global.Config.WWW.HttpHost, global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
 }
 
 func ginLogFormatter() func(param gin.LogFormatterParams) string {
@@ -124,7 +135,7 @@ func SettingLogger() *os.File {
 
 	if global.Config.Service.Mode == "release" {
 		os.Mkdir("log", 0755)
-		file, err = os.OpenFile("log/" + global.Config.Service.Name + ".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err = os.OpenFile("log/" + global.Config.Service.Name + "." + time.Now().Format("20060102") + ".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			panic(err)
 		}
@@ -140,14 +151,31 @@ func SettingLogger() *os.File {
 func ConnectDatabase() (*sql.DB) {
 
 	var db *sql.DB
-	var err error
+	//var err error
 
-	db, err = sql.Open(global.Config.Database.Driver, global.Config.Database.Name)
-	if err != nil {
-		panic(err)
+	dbConf := godror.ConnectionParams{
+		CommonParams: dsn.CommonParams{
+			Username: global.Config.Database.User,
+			Password: dsn.NewPassword(global.Config.Database.Password),
+			Timezone: time.Local,
+		},
+		ConnParams: godror.ConnParams{
+		 	ConnClass: "PHOTOAPP",
+		},
+		PoolParams: godror.PoolParams{
+			MinSessions:      global.Config.Database.MaxIdleConns,
+			MaxSessions:      global.Config.Database.MaxOpenConns,
+			SessionIncrement: 1,
+			SessionTimeout:   1 * time.Minute,
+			WaitTimeout:	  5 * time.Second,
+			MaxLifeTime:      5 * time.Minute,
+		},
 	}
+	dbConf.ConnectString = global.Config.Database.ConnectString
+	db = sql.OpenDB(godror.NewConnector(dbConf))
 	db.SetMaxOpenConns(global.Config.Database.MaxOpenConns)
-	db.SetMaxIdleConns(global.Config.Database.MaxIdleConns)
+	db.SetMaxIdleConns(0)
+	db.SetConnMaxLifetime(0)
 
 	return db
 }

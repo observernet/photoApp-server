@@ -3,6 +3,7 @@ package RestV10
 import (
 	"fmt"
 	"time"
+	"context"
 	"strconv"
 
 	//"encoding/json"
@@ -26,6 +27,9 @@ import (
 // ResData - upload_url: 사진업로드 URL
 //         - snapkey: 스냅키
 func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -104,7 +108,7 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	snapDate := time.Now().Format("20060102")
 
 	// 트랜잭션 시작
-	tx, err = db.Begin()
+	tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -150,7 +154,7 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	//////////////////////////////////////////
 
 	// 캐쉬를 기록한다 기록한다
-	common.User_UpdateStat(db, rds, userkey)
+	common.User_UpdateStat(ctx, db, rds, userkey)
 	_, err = rds.Do("HSET", rCheckkey, check_key, strconv.FormatInt(curtime, 10))
 
 	// 응답값을 세팅한다

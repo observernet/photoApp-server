@@ -2,6 +2,7 @@ package RestV10
 
 import (
 	"time"
+	"context"
 	"strconv"
 	"encoding/json"
 
@@ -17,6 +18,9 @@ var g_psearch_curtime int64
 var g_psearch_rkey string
 
 func TR_SearchPasswd(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	reqBody := reqData["body"].(map[string]interface{})
 	
@@ -58,9 +62,9 @@ func TR_SearchPasswd(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 	var res_code int
 	var step string = reqBody["step"].(string)
 	switch step {
-		case "1": res_code = _SearchPasswdStep1(db, rds, reqBody, resBody, StepInfo)
-		case "2": res_code = _SearchPasswdStep2(db, rds, reqBody, resBody, StepInfo)
-		case "3": res_code = _SearchPasswdStep3(db, rds, reqBody, resBody, StepInfo)
+		case "1": res_code = _SearchPasswdStep1(ctx, db, rds, reqBody, resBody, StepInfo)
+		case "2": res_code = _SearchPasswdStep2(ctx, db, rds, reqBody, resBody, StepInfo)
+		case "3": res_code = _SearchPasswdStep3(ctx, db, rds, reqBody, resBody, StepInfo)
 		default: res_code = 9003
 	}
 	
@@ -75,7 +79,7 @@ func TR_SearchPasswd(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 // ResData - expire: 만료시간 (초)
 //         - limit_time: 제한시간 (timestamp)
 //         - code: 인증코드 (6자리) - 임시, 오픈시 삭제할 예정임
-func _SearchPasswdStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
+func _SearchPasswdStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
 
 	// 인증번호 5회 이상 실패인지 확인한다
 	if StepInfo != nil && StepInfo["block_time"] != nil {
@@ -93,7 +97,7 @@ func _SearchPasswdStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 	// 이미 존재하는 계정인지 체크한다
 	if reqBody["type"].(string) == "phone" {
 		query = "SELECT USER_KEY FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
-		if stmt, err = db.Prepare(query); err != nil {
+		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -110,7 +114,7 @@ func _SearchPasswdStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 		if len(userKey) == 0 { return 8017 }
 	} else {
 		query = "SELECT count(USER_KEY) FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
-		if stmt, err = db.Prepare(query); err != nil {
+		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -179,7 +183,7 @@ func _SearchPasswdStep1(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 //         - errcnt: 오류횟수
 //         - maxerr: 최대 오류횟수
 //         - limit_time: 제한시간 (timestamp)
-func _SearchPasswdStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
+func _SearchPasswdStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["code"] == nil { return 9003 }
@@ -250,7 +254,7 @@ func _SearchPasswdStep2(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 //         - email: type = email then 이메일
 //         - loginpw: 로그인 비밀번호
 // ResData - ok: true/false
-func _SearchPasswdStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
+func _SearchPasswdStep3(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[string]interface{}, resBody map[string]interface{}, StepInfo map[string]interface{}) int {
 	
 	// check input
 	if reqBody["loginpw"] == nil || len(reqBody["loginpw"].(string)) <= 1 { return 9003 }
@@ -262,7 +266,7 @@ func _SearchPasswdStep3(db *sql.DB, rds redis.Conn, reqBody map[string]interface
 	var err error
 	
 	// 비밀번호를 변경한다
-	_, err = db.Exec("UPDATE USER_INFO SET LOGIN_PASSWD = :1, ERROR_COUNT = 0, LOGIN_LIMIT_TIME = 0, UPDATE_TIME = sysdate WHERE USER_KEY = :2", reqBody["loginpw"].(string), StepInfo["userkey"].(string))
+	_, err = db.ExecContext(ctx, "UPDATE USER_INFO SET LOGIN_PASSWD = :1, ERROR_COUNT = 0, LOGIN_LIMIT_TIME = 0, UPDATE_TIME = sysdate WHERE USER_KEY = :2", reqBody["loginpw"].(string), StepInfo["userkey"].(string))
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

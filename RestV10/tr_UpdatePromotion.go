@@ -3,6 +3,7 @@ package RestV10
 import (
 	"time"
 	"context"
+	"strings"
 
 	"photoApp-server/global"
 	"photoApp-server/common"
@@ -12,21 +13,25 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-func TR_UserBlockClear(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+// ReqData - 
+// ResData - 
+func TR_UpdatePromotion(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
 	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
-
+	
 	// check input
 	if reqBody["loginkey"] == nil { return 9003 }
-	if reqBody["block_userkey"] == nil || len(reqBody["block_userkey"].(string)) != 16 { return 9003 }
+	if reqBody["promotion"] == nil || len(reqBody["promotion"].(string)) == 0 { return 9003 }
+	
+	var err error
 
 	// 유저 정보를 가져온다
-	mapUser, err := common.User_GetInfo(rds, userkey, "info", "login")
-	if err != nil {
+	var mapUser map[string]interface{}
+	if mapUser, err = common.User_GetInfo(rds, userkey); err != nil {
 		if err == redis.ErrNil {
 			return 8015
 		} else {
@@ -39,24 +44,27 @@ func TR_UserBlockClear(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, 
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" { return 8013 }
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
-	// 이미 차단한 USER인지 체크한다
-	var count int64 = 0
-	err = db.QueryRowContext(ctx, "SELECT count(BLOCK_USER_KEY) FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "' and BLOCK_USER_KEY = '" + reqBody["block_userkey"].(string) + "'").Scan(&count)
-	if err != nil {
-		global.FLog.Println(err)
-		return 9901
-	}
-	if count == 0 {
-		return 8032
+	// 이전값과 동일한지 체크한다
+	if strings.EqualFold(reqBody["promotion"].(string), mapUser["info"].(map[string]interface{})["PROMOTION"].(string)) {
+		return 8027
 	}
 
-	// 사용자를 차단을 해제한다
-	_, err = db.ExecContext(ctx, "DELETE FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "' and BLOCK_USER_KEY = '" + reqBody["block_userkey"].(string) + "'")
+	// 프로모션 정보를 갱신한다
+	query := "UPDATE USER_INFO SET PROMOTION = '" + reqBody["promotion"].(string) + "', UPDATE_TIME = sysdate WHERE USER_KEY = '" + userkey + "'"
+	_, err = db.ExecContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
 
+	// REDIS 사용자 정보를 갱신한다
+	if err = common.User_UpdateInfo(ctx, db, rds, userkey); err != nil {
+		global.FLog.Println(err)
+		return 9901
+	}
+
+	// 응답값을 세팅한다
 	resBody["ok"] = true
+	
 	return 0
 }

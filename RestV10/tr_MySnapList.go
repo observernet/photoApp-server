@@ -2,6 +2,8 @@ package RestV10
 
 import (
 	"fmt"
+	"time"
+	"context"
 	
 	"photoApp-server/global"
 	"photoApp-server/common"
@@ -35,6 +37,9 @@ type _MySnapList_Labels struct {
 // ReqData - 
 // ResData - 
 func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -73,7 +78,7 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 			 "  and UPLOAD_STATUS = 'V' "
 	if reqBody["next"] != nil && len(reqBody["next"].(string)) > 1 { query = query + "  and SNAP_DATE * 1000000 + SNAP_IDX < '" + reqBody["next"].(string) + "'" }
 	query = query + "ORDER BY SNAP_TIME desc"
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -96,7 +101,7 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 		imageUrl := image_url + "/Snap/View/S/" + snapkey + "/" + image_sub + "/" + image_type
 
 		// Label 정보를 가져온다
-		labels, err := _MySnapList_GetLabels(db, snap_date, snap_idx)
+		labels, err := _MySnapList_GetLabels(ctx, db, snap_date, snap_idx)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -139,7 +144,7 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	return 0
 }
 
-func _MySnapList_GetLabels(db *sql.DB, snap_date int64, snap_idx int64) (_MySnapList_Labels, error) {
+func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, snap_idx int64) (_MySnapList_Labels, error) {
 
 	var err error
 	var labels _MySnapList_Labels
@@ -148,7 +153,7 @@ func _MySnapList_GetLabels(db *sql.DB, snap_date int64, snap_idx int64) (_MySnap
 			 "FROM SNAP_LABEL " +
 			 "WHERE SNAP_DATE = " + fmt.Sprintf("%d", snap_date) +
 			 "  and SNAP_IDX = " + fmt.Sprintf("%d", snap_idx)
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil { return labels, err }
 	defer rows.Close()
 
