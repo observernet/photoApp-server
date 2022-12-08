@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 	"context"
-	//"encoding/json"
+	"encoding/json"
 	
 	"photoApp-server/global"
 	"photoApp-server/common"
@@ -65,6 +65,32 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	// 계정 상태 및 로그인 정보를 체크한다
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" { return 8013 }
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
+
+	// 버전이 세팅되어 있다면
+	if reqBody["os"] != nil && reqBody["version"] != nil {
+		if reqBody["os"].(string) != "android" && reqBody["os"].(string) != "ios" { return 9003 }
+		if len(reqBody["version"].(string)) == 0 { return 9003 }
+
+		// 버전 정보를 가져온다
+		rkey := global.Config.Service.Name + ":Version"
+		rvalue, err := redis.String(rds.Do("GET", rkey))
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+
+		// Map으로 변환한다
+		mapVer := make(map[string]interface{})	
+		if err = json.Unmarshal([]byte(rvalue), &mapVer); err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+
+		min_version := mapVer[reqBody["os"].(string) + "_min"].(string)
+		if common.CheckVersion(reqBody["version"].(string), min_version) == false {
+			return 9903
+		}
+	}
 
 	// 현재 사용자의 라벨가능 건수를 체크한다
 	if mapUser["stat"].(map[string]interface{})["LABEL_COUNT"].(float64) <= 0 {

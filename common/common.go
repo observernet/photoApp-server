@@ -345,6 +345,28 @@ func CheckForbiddenWord(ctx context.Context, db *sql.DB, ftype string, word stri
 	return false, nil
 }
 
+func CheckVersion(version string, min string) (bool) {
+
+	var v, m int64
+
+	arr_version := strings.Split(version, ".")
+	arr_min := strings.Split(min, ".")
+
+	for i := 0; i < len(arr_min); i++ {
+		m, _ = strconv.ParseInt(arr_min[i], 10, 64)
+		if i >= len(arr_version) {
+			v = 0
+		} else {
+			v, _ = strconv.ParseInt(arr_version[i], 10, 64)
+		}
+
+		if v > m { return true }
+		if v < m { return false }
+	}
+
+	return true
+}
+
 //func SendCode_Phone(ncode string, phone string, code string) {
 //	global.FLog.Println("SendCode_Phone", ncode, phone, code)
 //}

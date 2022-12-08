@@ -83,6 +83,7 @@ func GetErrorMessageKOR(code int) string {
 
 		case 9901:	return "시스템 오류"
 		case 9902:	return "잘못된 접근입니다"
+		case 9903:	return "스토어에서 업데이트 해주세요"
 	}
 
 	return "정의되지 않은 메세지"
