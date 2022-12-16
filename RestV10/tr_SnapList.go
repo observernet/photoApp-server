@@ -76,18 +76,21 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 
 	// 스냅리스트를 가져올 SQL을 생성한다
-	query = "SELECT AB.SNAP_DATE, AB.SNAP_IDX, AB.SNAP_TIME, AB.LATD, AB.LNGD, AB.IMAGE_URL, AB.IMAGE_TYPE, AB.IMAGE_SUB, AB.USER_KEY, AB.NAME, AB.PHOTO, AB.LABELS " +
+	query = "SELECT AB.SNAP_DATE, AB.SNAP_IDX, AB.SNAP_TIME, AB.LATD, AB.LNGD, AB.IMAGE_URL, AB.IMAGE_TYPE, AB.IMAGE_SUB, AB.USER_KEY, AB.NAME, AB.PHOTO, AB.NOTE, AB.LABELS, AB.LIKES, AB.MYLIKE " +
 			"FROM " +
 			"( " +
 			"	SELECT A.SNAP_DATE, A.SNAP_IDX, DATE_TO_UNIXTIME(A.SNAP_TIME) SNAP_TIME, A.LATD, A.LNGD, A.IMAGE_URL, A.IMAGE_TYPE, A.IMAGE_SUB, A.USER_KEY, B.NAME, B.PHOTO, " +
+			"		   NVL(A.NOTE, ' ') NOTE, " +
 			"		   (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX) LABELS, " +
-			"         (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND USER_KEY = '" + userkey + "') MYLABELS " +
-			"FROM SNAP A, USER_INFO B " +
-			"WHERE A.USER_KEY = B.USER_KEY " +
-		  	"  and A.UPLOAD_STATUS = 'V' " +
-		  	"  and A.USER_KEY != '" + userkey + "' " +
-			"  and A.USER_KEY not in (SELECT BLOCK_USER_KEY FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "') " +
-		  	"  and A.IS_SHOW = 'Y' " +
+			"          (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND USER_KEY = '" + userkey + "') MYLABELS, " +
+			"		   (SELECT count(REACTION_IDX) FROM SNAP_REACTION WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND REACTION_TYPE = 'L') LIKES, " +
+			"		   (SELECT count(REACTION_IDX) FROM SNAP_REACTION WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND REACTION_TYPE = 'L' AND USER_KEY = '" + userkey + "') MYLIKE " +
+			"  FROM SNAP A, USER_INFO B " +
+			"  WHERE A.USER_KEY = B.USER_KEY " +
+		  	"    and A.UPLOAD_STATUS = 'V' " +
+		  	"    and A.USER_KEY != '" + userkey + "' " +
+			"    and A.USER_KEY not in (SELECT BLOCK_USER_KEY FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "') " +
+		  	"    and A.IS_SHOW = 'Y' " +
 		  	exclude +
 		    ") AB " +
 			"WHERE AB.SNAP_TIME > :1 " +
@@ -138,7 +141,11 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 								"lng":     common.GetFloat64FromNumber(lst["LNGD"].(godror.Number)),
 								"url":     imageUrl,
 								"time":    common.GetInt64FromNumber(lst["SNAP_TIME"].(godror.Number)) * 1000,
-								"labels":  common.GetInt64FromNumber(lst["LABELS"].(godror.Number)) })
+								"labels":  common.GetInt64FromNumber(lst["LABELS"].(godror.Number)),
+								"reactions": map[string]interface{} {
+									"likes":   common.GetInt64FromNumber(lst["LIKES"].(godror.Number)),
+							    	"mylike":  common.GetInt64FromNumber(lst["MYLIKE"].(godror.Number)) },
+								"note":    lst["NOTE"].(string) })
 	}
 	resBody["list"] = list
 

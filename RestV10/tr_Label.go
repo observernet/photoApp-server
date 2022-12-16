@@ -90,6 +90,8 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 		if common.CheckVersion(reqBody["version"].(string), min_version) == false {
 			return 9903
 		}
+	} else {
+		return 9903
 	}
 
 	// 현재 사용자의 라벨가능 건수를 체크한다

@@ -77,6 +77,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 		case "popup": res_code = TR_Popup(c, db, rds, lang, reqData, resBody)
 		case "snap_list": res_code = TR_SnapList(c, db, rds, lang, reqData, resBody)
 		case "label": res_code = TR_Label(c, db, rds, lang, reqData, resBody)
+		case "reaction": res_code = TR_Reaction(c, db, rds, lang, reqData, resBody)
 		case "ad_reword": res_code = TR_AdReword(c, db, rds, lang, reqData, resBody)
 		case "fcm_update": res_code = TR_FcmUpdate(c, db, rds, lang, reqData, resBody)
 		case "snap": res_code = TR_Snap(c, db, rds, lang, reqData, resBody)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	
 	"photoApp-server/global"
+	//"photoApp-server/common"
 
 	"database/sql"
 	"github.com/gin-gonic/gin"

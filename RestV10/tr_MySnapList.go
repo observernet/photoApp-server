@@ -34,6 +34,10 @@ type _MySnapList_Labels struct {
 	Calamity_L			int64
 }
 
+type _MySnapList_Reactions struct {
+	Likes				int64
+}
+
 // ReqData - 
 // ResData - 
 func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
@@ -72,7 +76,7 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 내 스냅리스트를 가져온다
-	query := "SELECT SNAP_DATE, SNAP_IDX, DATE_TO_UNIXTIME(SNAP_TIME), LATD, LNGD, IMAGE_URL, IMAGE_TYPE, IMAGE_SUB " +
+	query := "SELECT SNAP_DATE, SNAP_IDX, DATE_TO_UNIXTIME(SNAP_TIME), LATD, LNGD, IMAGE_URL, IMAGE_TYPE, IMAGE_SUB, NVL(NOTE, ' ') " +
 			 "FROM SNAP " +
 			 "WHERE USER_KEY = '" + userkey + "' " +
 			 "  and UPLOAD_STATUS = 'V' "
@@ -87,12 +91,12 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 	var snap_date, snap_idx, snap_time int64
 	var lat, lng float64
-	var image_url, image_type, image_sub string
+	var image_url, image_type, image_sub, note string
 	var count int64
 
 	list := make([]map[string]interface{}, 0)
 	for rows.Next() {	
-		err = rows.Scan(&snap_date, &snap_idx, &snap_time, &lat, &lng, &image_url, &image_type, &image_sub)
+		err = rows.Scan(&snap_date, &snap_idx, &snap_time, &lat, &lng, &image_url, &image_type, &image_sub, &note)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -102,6 +106,13 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 		// Label 정보를 가져온다
 		labels, err := _MySnapList_GetLabels(ctx, db, snap_date, snap_idx)
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+
+		// 리액션 정보를 가져온다
+		reactions, err := _MySnapList_GetReactions(ctx, db, snap_date, snap_idx)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -131,7 +142,10 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 									"caR": labels.Calamity_R,
 									"caS": labels.Calamity_S,
 									"caF": labels.Calamity_F,
-									"caL": labels.Calamity_L}}})
+									"caL": labels.Calamity_L}},
+							"reactions": map[string]interface{} {
+								"likes": reactions.Likes},
+							"note": note })
 
 		count++
 		if count >= 30 {
@@ -186,4 +200,28 @@ func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, sna
 	}
 
 	return labels, nil
+}
+
+func _MySnapList_GetReactions(ctx context.Context, db *sql.DB, snap_date int64, snap_idx int64) (_MySnapList_Reactions, error) {
+
+	var err error
+	var reactions _MySnapList_Reactions
+
+	query := "SELECT REACTION_TYPE " +
+			 "FROM SNAP_REACTION " +
+			 "WHERE SNAP_DATE = " + fmt.Sprintf("%d", snap_date) +
+			 "  and SNAP_IDX = " + fmt.Sprintf("%d", snap_idx)
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil { return reactions, err }
+	defer rows.Close()
+
+	var rtype string
+	for rows.Next() {	
+		err = rows.Scan(&rtype)
+		if err != nil { return reactions, err }
+
+		if rtype == "L" { reactions.Likes++ }
+	}
+
+	return reactions, nil
 }
