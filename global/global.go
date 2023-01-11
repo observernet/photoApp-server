@@ -46,6 +46,7 @@ type ServerConfig struct {
 		KASInquiryHost  string	`json:"KAS_inquiry_host" binding:"required"`
 		KASTransactHost	string	`json:"KAS_transact_host" binding:"required"`
 		SyncRedisHost	string	`json:"sync_redis_host" binding:"required"`
+		MQTTPusherHost	string	`json:"MQTT_pusher_host" binding:"required"`
 	} `json:"connector" binding:"required"`
 
 	APIs struct {

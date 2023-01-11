@@ -30,6 +30,7 @@ func TR_Notice(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData 
 	query := "SELECT IDX, TYPE, TITLE, BODY, LINK, DATE_TO_UNIXTIME(REG_DATE), DATE_TO_UNIXTIME(UPDATE_TIME), SORT " +
 			 "FROM NOTICE " + 
 			 "WHERE DATE_TO_UNIXTIME(UPDATE_TIME) > " + fmt.Sprintf("%d", last_update_time) +
+			 "  and LANG = '" + lang + "' " +
 			 "ORDER BY SORT desc, IDX desc"
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {

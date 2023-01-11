@@ -36,7 +36,7 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 
 	//!! 프론트 배포후 아래 2라인 삭제
 	if reqBody["note"] == nil { reqBody["note"] = " " }
-	if reqBody["label"] == nil { reqBody["label"] = map[string]interface{} {"rain": "2", "wcondi": " ", "calamity": " "} }
+	if reqBody["label"] == nil { reqBody["label"] = map[string]interface{} {"rain": " ", "wcondi": " ", "calamity": " "} }
 
 	// check input
 	if reqBody["loginkey"] == nil { return 9003 }
@@ -133,10 +133,10 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	_, err = tx.Exec("INSERT INTO SNAP " +
 					 " (SNAP_DATE, SNAP_IDX, SNAP_TIME, USER_KEY, LATD, LNGD, ALTD, BEAR, PRE, PM10, PM25, IS_SHOW, UPLOAD_STATUS, USER_IP, RAIN, WCONDI, CALAMITY, NOTE, UPDATE_TIME) " +
 					 " VALUES " +
-					 " (:1, :2, sysdate, :3, :4, :5, :6, :7, :8, :9, :10, 'Y', 'A', :11, :12, :13, :14, sysdate) ",
+					 " (:1, :2, sysdate, :3, :4, :5, :6, :7, :8, :9, :10, 'Y', 'A', :11, :12, :13, :14, :15, sysdate) ",
 					 snapDate, snapIdx, userkey,
 					 reqBody["lat"].(float64), reqBody["lng"].(float64), reqBody["alt"].(float64), reqBody["bear"].(float64), reqBody["pre"].(float64),
-					 pm10, pm25, reqBody["label"].(map[string]interface{})["rain"].(string), reqBody["label"].(map[string]interface{})["wcondi"].(string), reqBody["label"].(map[string]interface{})["calamity"].(string), reqBody["note"].(string), c.ClientIP())
+					 pm10, pm25, c.ClientIP(), reqBody["label"].(map[string]interface{})["rain"].(string), reqBody["label"].(map[string]interface{})["wcondi"].(string), reqBody["label"].(map[string]interface{})["calamity"].(string), reqBody["note"].(string))
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901

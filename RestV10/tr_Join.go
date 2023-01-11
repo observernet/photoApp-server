@@ -308,9 +308,9 @@ func _JoinStep3(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[str
 
 		// 회원가입을 처리한다
 		_, err = tx.Exec("INSERT INTO USER_INFO " +
-						" (USER_KEY, NCODE, PHONE, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, UPDATE_TIME) " +
+						" (USER_KEY, NCODE, PHONE, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, MAIN_LANG, UPDATE_TIME) " +
 						" VALUES " +
-						" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + reqBody["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 10, 0, 0, sysdate) ")
+						" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + reqBody["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 10, 0, 0, 'E', sysdate) ")
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -337,6 +337,9 @@ func _JoinStep3(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[str
 			global.FLog.Println(err)
 			return 9901
 		}
+
+		// 에어드랍을 전송한다
+		_JoinSendAirdrop(rds, userkey, address)
 
 		// 응답값을 세팅한다
 		resBody["userkey"] = userkey
@@ -515,9 +518,9 @@ func _JoinStep4(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[str
 
 	// 회원가입을 처리한다
 	_, err = tx.Exec("INSERT INTO USER_INFO " +
-					" (USER_KEY, NCODE, PHONE, EMAIL, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, UPDATE_TIME) " +
+					" (USER_KEY, NCODE, PHONE, EMAIL, NAME, PROMOTION, USER_LEVEL, STATUS, CREATE_TIME, LABEL_COUNT, ERROR_COUNT, LAST_SNAP_TIME, MAIN_LANG, UPDATE_TIME) " +
 					" VALUES " +
-					" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + joinInfo["email"].(string) + "', '" + joinInfo["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 10, 0, 0, sysdate) ")
+					" ('" + userkey + "', '" + reqBody["ncode"].(string) + "', '" + reqBody["phone"].(string) + "', '" + joinInfo["email"].(string) + "', '" + joinInfo["name"].(string) + "', '" + joinInfo["promotion"].(string) + "', 1, 'V', sysdate, 10, 0, 0, 'E', sysdate) ")
 	if err != nil {
 		global.FLog.Println(err)
 		return 9901
@@ -600,6 +603,9 @@ func _JoinStep4(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[str
 		return 9901
 	}
 
+	// 에러드랍을 전송한다
+	_JoinSendAirdrop(rds, userkey, address)
+
 	// 응답값을 세팅한다
 	resBody["userkey"] = userkey
 
@@ -628,4 +634,31 @@ func _JoinGetUserKey(ctx context.Context, db *sql.DB) (string, error) {
 	}
 
 	return userKey, nil
+}
+
+func _JoinSendAirdrop(rds redis.Conn, userkey string, wallet string) {
+
+	// 에어드랍정보를 가져온다
+	mapAirdrop, err := common.GetAirdropInfo(rds, "10001")
+	if err != nil {
+		if strings.Contains(err.Error(), "Not Found Key") {
+			return
+		} else {
+			global.FLog.Println("Join AirDrop Error:", err)
+		}
+	}
+
+	// 관리자 정의변수를 가져온다
+	var adminVar global.AdminConfig
+	if adminVar, err = common.GetAdminVar(rds); err != nil {
+		global.FLog.Println("Join AirDrop Error:", err)
+		return
+	}
+
+	// 에러드랍을 전송한다
+	kas, err := common.KAS_Transfer("D:" + userkey, adminVar.Wallet.Marketing.Address, wallet, mapAirdrop["obsr"].(string), adminVar.Wallet.Marketing.Type, adminVar.Wallet.Marketing.CertInfo)
+	if err != nil {
+		global.FLog.Println("Join AirDrop Error:", err)
+	}
+	global.FLog.Println("Join AirDrop:", kas)
 }

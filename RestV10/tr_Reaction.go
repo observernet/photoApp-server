@@ -72,21 +72,21 @@ func TR_Reaction(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	if row_upload_status != "V" { return 8107 }
 
 	//////////////////////////////////////////
-	// 라벨 등록 처리한다
-	var tx *sql.Tx
-
-	// 트랜잭션 시작
-	tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		global.FLog.Println(err)
-		return 9901
-	}
-	defer tx.Rollback()
+	// 라벨 등록 처리한다	
 
 	// 리액션 정보를 등록/삭제한다
 	if row_myReactionIdx == 0 {
 
+		var tx *sql.Tx
 		var reactionIdx int64
+
+		// 트랜잭션 시작
+		tx, err = db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+		defer tx.Rollback()
 
 		// 리액션키를 가져온다
 		query = "SELECT NVL(MAX(REACTION_IDX), 0) + 1 FROM SNAP_REACTION WHERE SNAP_DATE = " + snap_date + " and SNAP_IDX = " + snap_idx;
@@ -107,23 +107,26 @@ func TR_Reaction(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			return 9901
 		}
 
+		// 트랜잭션 종료
+		err = tx.Commit()
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+
+		// 사용자에게 MQTT를 전송한다
+		//common.MQTTPusher_Emit("/PhotoApp/like/" + row_user_key, `{"title":"like","body":"` + mapUser["info"].(map[string]interface{})["NAME"].(string) + `","link":"` + reqBody["snapkey"].(string) + `"}`)
+
 	} else {
 
 		// 리액션정보를 삭제한다
-		_, err = tx.Exec("DELETE FROM SNAP_REACTION WHERE SNAP_DATE = :1 and SNAP_IDX = :2 and REACTION_IDX = :3 and USER_KEY = :4 ",
+		_, err = db.Exec("DELETE FROM SNAP_REACTION WHERE SNAP_DATE = :1 and SNAP_IDX = :2 and REACTION_IDX = :3 and USER_KEY = :4 ",
 						 snap_date, snap_idx, row_myReactionIdx, userkey)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
 
-	}
-
-	// 트랜잭션 종료
-	err = tx.Commit()
-	if err != nil {
-		global.FLog.Println(err)
-		return 9901
 	}
 
 	// 라벨 등록 처리한다

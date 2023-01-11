@@ -292,6 +292,7 @@ func _LoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[st
 							"photo": "https://photoapp.obsr-app.org/Image/View/profile/" + loginInfo["userkey"].(string),
 							"level": mapUser["info"].(map[string]interface{})["USER_LEVEL"].(float64),
 							"promotion": mapUser["info"].(map[string]interface{})["PROMOTION"].(string),
+							"lang": common.GetLangCode(mapUser["info"].(map[string]interface{})["MAIN_LANG"].(string)),
 							"persona_cnt": persona_count}
 	
 	resBody["stat"] = map[string]interface{} {

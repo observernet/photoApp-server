@@ -65,6 +65,22 @@ func GetIntTime() (int64) {
 	return GetInt64FromString(curtime)
 }
 
+func GetLangCode(code string) string {
+
+	if code == "K" { return "kr"; }
+	if code == "I" { return "id"; }
+
+	return "en";
+}
+
+func GetLangCode2(code string) string {
+
+	if code == "kr" { return "K"; }
+	if code == "id" { return "I"; }
+
+	return "E";
+}
+
 func GetCodeKey(length int) string {
 
 	var idx int
@@ -365,6 +381,22 @@ func CheckVersion(version string, min string) (bool) {
 	}
 
 	return true
+}
+
+func GetAirdropInfo(rds redis.Conn, key string) (map[string]interface{}, error) {
+
+	rkey := global.Config.Service.Name + ":Airdrop"
+	rvalue, err := redis.String(rds.Do("GET", rkey))
+	if err != nil { return nil, err }
+
+	mapAirdrop := make(map[string]interface{})
+	if err = json.Unmarshal([]byte(rvalue), &mapAirdrop); err != nil { return nil, err }
+
+	if mapAirdrop[key] == nil {
+		return nil, errors.New("Not Found Key")
+	}
+
+	return mapAirdrop[key].(map[string]interface{}), nil
 }
 
 //func SendCode_Phone(ncode string, phone string, code string) {

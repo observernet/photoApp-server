@@ -22,16 +22,25 @@ type _MySnapList_Labels struct {
 	Rain_N				int64
 	Rain_Y				int64
 	Rain_S				int64
+	Rain_I				int64
+	Rain_W				int64
 	Wcondi_N			int64
 	Wcondi_F			int64
 	Wcondi_H			int64
 	Wcondi_R			int64
 	Wcondi_T			int64
+	Wcondi_I			int64
 	Calamity_N			int64
 	Calamity_R			int64
 	Calamity_S			int64
 	Calamity_F			int64
 	Calamity_L			int64
+	Calamity_O			int64
+	Calamity_E			int64
+	Calamity_W			int64
+	Calamity_B			int64
+	Calamity_A			int64
+	Calamity_H			int64
 }
 
 type _MySnapList_Reactions struct {
@@ -130,19 +139,28 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 								"rain": map[string]interface{} {
 									"raN": labels.Rain_N,
 									"raY": labels.Rain_Y,
-									"raS": labels.Rain_S},
+									"raS": labels.Rain_S,
+									"raI": labels.Rain_I,
+									"raW": labels.Rain_W},
 								"nature": map[string]interface{} {
 									"wcN": labels.Wcondi_N,
 									"wcF": labels.Wcondi_F,
 									"wcH": labels.Wcondi_H,
 									"wcR": labels.Wcondi_R,
-									"wcT": labels.Wcondi_T},
+									"wcT": labels.Wcondi_T,
+									"wcI": labels.Wcondi_I},
 								"calamity": map[string]interface{} {
 									"caN": labels.Calamity_N,
 									"caR": labels.Calamity_R,
 									"caS": labels.Calamity_S,
 									"caF": labels.Calamity_F,
-									"caL": labels.Calamity_L}},
+									"caL": labels.Calamity_L,
+									"caO": labels.Calamity_O,
+									"caE": labels.Calamity_E,
+									"caW": labels.Calamity_W,
+									"caB": labels.Calamity_B,
+									"caA": labels.Calamity_A,
+									"caH": labels.Calamity_H}},
 							"reactions": map[string]interface{} {
 								"likes": reactions.Likes},
 							"note": note })
@@ -184,6 +202,8 @@ func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, sna
 		if rain == "N" { labels.Rain_N++ }
 		if rain == "Y" { labels.Rain_Y++ }
 		if rain == "S" { labels.Rain_S++ }
+		if rain == "I" { labels.Rain_I++ }
+		if rain == "W" { labels.Rain_W++ }
 
 		if is_etc == "Y" {
 			if wcondi == "N" { labels.Wcondi_N++ }
@@ -191,11 +211,18 @@ func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, sna
 			if wcondi == "H" { labels.Wcondi_H++ }
 			if wcondi == "R" { labels.Wcondi_R++ }
 			if wcondi == "T" { labels.Wcondi_T++ }
+			if wcondi == "I" { labels.Wcondi_I++ }
 			if calamity == "N" { labels.Calamity_N++ }
 			if calamity == "R" { labels.Calamity_R++ }
 			if calamity == "S" { labels.Calamity_S++ }
 			if calamity == "F" { labels.Calamity_F++ }
 			if calamity == "L" { labels.Calamity_L++ }
+			if calamity == "O" { labels.Calamity_O++ }
+			if calamity == "E" { labels.Calamity_E++ }
+			if calamity == "W" { labels.Calamity_W++ }
+			if calamity == "B" { labels.Calamity_B++ }
+			if calamity == "A" { labels.Calamity_A++ }
+			if calamity == "H" { labels.Calamity_H++ }
 		}
 	}
 

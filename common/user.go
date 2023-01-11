@@ -38,6 +38,11 @@ func User_GetInfo(rds redis.Conn, userkey string, hashkey ...string) (map[string
 			if err = json.Unmarshal([]byte(rvalue), &mapData); err != nil {
 				return nil, err
 			}
+			if hkey == "info" {
+				if mapData["MAIN_LANG"] == nil {
+					mapData["MAIN_LANG"] = "K"
+				}
+			}
 			mapUser[hkey] = mapData
 		}
 	}
@@ -103,7 +108,7 @@ func User_UpdateInfo(ctx context.Context, db *sql.DB, rds redis.Conn, userkey st
 	//if len(mapUserInfo) != 1 { return errors.New("Not Found User Info") }
 	//stmt.Close()
 
-	query := "SELECT USER_KEY, NCODE, PHONE, NVL(EMAIL, ' ') EMAIL, NVL(NAME, ' ') NAME, NVL(PHOTO, ' ') PHOTO, PROMOTION, USER_LEVEL, STATUS, NVL(ABUSE_REASON, ' ') ABUSE_REASON FROM USER_INFO WHERE USER_KEY = '" + userkey + "'"
+	query := "SELECT USER_KEY, NCODE, PHONE, NVL(EMAIL, ' ') EMAIL, NVL(NAME, ' ') NAME, NVL(PHOTO, ' ') PHOTO, PROMOTION, USER_LEVEL, STATUS, NVL(ABUSE_REASON, ' ') ABUSE_REASON, NVL(MAIN_LANG, 'K') MAIN_LANG FROM USER_INFO WHERE USER_KEY = '" + userkey + "'"
 	if rows, err = db.QueryContext(ctx, query); err != nil { return err }
 	if mapUserInfo, err = GetRowsResult(rows, 1); err != nil { return err }
 	if len(mapUserInfo) != 1 { return errors.New("Not Found User Info") }

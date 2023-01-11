@@ -89,6 +89,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			"  WHERE A.USER_KEY = B.USER_KEY " +
 		  	"    and A.UPLOAD_STATUS = 'V' " +
 		  	"    and A.USER_KEY != '" + userkey + "' " +
+			//"    and A.USER_KEY in ('Cne8QAxPR6mp9iqI', 'fUfrqy5ARn3ftQxM') " +
 			"    and A.USER_KEY not in (SELECT BLOCK_USER_KEY FROM USER_BLOCK WHERE USER_KEY = '" + userkey + "') " +
 		  	"    and A.IS_SHOW = 'Y' " +
 		  	exclude +
