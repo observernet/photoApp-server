@@ -62,7 +62,7 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 	var lang string = reqData["lang"].(string)
 
 	// Change Lang
-	if strings.EqualFold(lang, "kr") { lang = "K" }
+	if strings.EqualFold(lang, "kr") || strings.EqualFold(lang, "ko") { lang = "K" }
 	if strings.EqualFold(lang, "id") { lang = "I" }
 	if strings.EqualFold(lang, "en") { lang = "E" }
 

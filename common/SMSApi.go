@@ -1,6 +1,9 @@
 package common
 
 import (
+	"fmt"
+	"time"
+	"strings"
 	"errors"
 	"strconv"
     "io/ioutil"
@@ -8,16 +11,13 @@ import (
 	"net/url"
 	"reflect"
 
+	"encoding/base64"
 	"encoding/json"
 
 	"photoApp-server/global"
 )
 
 func SMSApi_Send(ncode string, phone string, templateId string, code string) (map[string]interface {}, error) {
-	
-	if ncode != "82" {
-		return nil, errors.New("Only Korea!!")
-	}
 	
 	var msg string
 	/*if templateId == "Login" {
@@ -34,11 +34,17 @@ func SMSApi_Send(ncode string, phone string, templateId string, code string) (ma
 		msg = "Code [" + code + "]"
 	}*/
 	msg = "OBSERVER [" + code + "] Please enter the authentication code."
+
+	if ncode == "82" {
+		return _RequestToSMSApi(phone, msg)
+	} else {
+		return _RequestToSMSApiGabia(ncode + phone, msg)
+	}
 	
-	return _RequestToSMSApi(phone, msg)
+	return nil, errors.New("Can not reach!")
 }
 
-func _RequestToSMSApi(receiver string, msg string) (map[string]interface {}, error) {
+func _RequestToSMSApi(receiver string, msg string) (map[string]interface{}, error) {
 
 	global.FLog.Println("_RequestToSMSApi", receiver, msg)
 
@@ -84,4 +90,98 @@ func _RequestToSMSApi(receiver string, msg string) (map[string]interface {}, err
 	}
 
 	return resData, nil
+}
+
+func _RequestToSMSApiGabia(receiver string, msg string) (map[string]interface{}, error) {
+
+	global.FLog.Println("_RequestToSMSApiGabia", receiver, msg)
+
+	accessToken, err := _GetGabiaAccessToken()
+	if err != nil { return nil, err }
+
+	target := "https://sms.gabia.com/api/send/sms"
+	method := "POST"
+
+	dt := time.Now()
+	uniqueKey := "GO" + dt.Format("20060102150405") + fmt.Sprintf("%02d", dt.Nanosecond() / 1000000)
+
+	payload := strings.NewReader("phone=" + receiver +
+							     "&callback=" + global.Config.APIs.GabiaSMSSender +
+							     "&message=" + url.QueryEscape(msg) +
+								 "&is_foreign=Y" + 
+							     "&refkey=" + uniqueKey)
+	
+	//fmt.Println(payload)
+
+	client := &http.Client {
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequest(method, target, payload)
+	if err != nil { return nil, err }
+
+	platKey := global.Config.APIs.GabiaSMSUser + ":" + accessToken
+	encKey := base64.StdEncoding.EncodeToString([]byte(platKey))
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Authorization", "Basic " + encKey)
+
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	fmt.Println(string(body))
+
+	resData := make(map[string]interface{})	
+	if err = json.Unmarshal(body, &resData); err != nil {
+		return nil, err
+	}
+
+	if resData["message"] != nil && !strings.EqualFold(resData["message"].(string), "success") {
+		return nil, errors.New(resData["message"].(string))
+	}
+
+	return resData, nil
+}
+
+func _GetGabiaAccessToken() (string, error) {
+
+	target := "https://sms.gabia.com/oauth/token"
+	method := "POST"
+
+	payload := strings.NewReader("grant_type=client_credentials")
+
+	client := &http.Client {
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequest(method, target, payload)
+	if err != nil { return "", err }
+
+	platKey := global.Config.APIs.GabiaSMSUser + ":" + global.Config.APIs.GabiaSMSKey
+	encKey := base64.StdEncoding.EncodeToString([]byte(platKey))
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Authorization", "Basic " + encKey)
+
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	resData := make(map[string]interface{})	
+	if err = json.Unmarshal(body, &resData); err != nil {
+		return "", err
+	}
+
+	if resData["message"] != nil {
+		return "", errors.New(resData["message"].(string))
+	}
+
+	if resData["access_token"] == nil {
+		return "", errors.New("Invalid Access Token")
+	}
+
+	return resData["access_token"].(string), nil
 }

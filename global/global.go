@@ -47,6 +47,7 @@ type ServerConfig struct {
 		KASTransactHost	string	`json:"KAS_transact_host" binding:"required"`
 		SyncRedisHost	string	`json:"sync_redis_host" binding:"required"`
 		MQTTPusherHost	string	`json:"MQTT_pusher_host" binding:"required"`
+		AddressHost		string	`json:"address_host" binding:"required"`
 	} `json:"connector" binding:"required"`
 
 	APIs struct {
@@ -60,6 +61,9 @@ type ServerConfig struct {
 		SMSUser			string	`json:"sms_user" binding:"required"`
 		SMSKey			string	`json:"sms_key" binding:"required"`
 		SMSSender		string	`json:"sms_sender" binding:"required"`
+		GabiaSMSUser	string	`json:"gabia_sms_user" binding:"required"`
+		GabiaSMSKey		string	`json:"gabia_sms_key" binding:"required"`
+		GabiaSMSSender	string	`json:"gabia_sms_sender" binding:"required"`
 	} `json:"apis" binding:"required"`
 }
 

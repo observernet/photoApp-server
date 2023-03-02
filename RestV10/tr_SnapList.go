@@ -76,11 +76,11 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	}
 
 	// 스냅리스트를 가져올 SQL을 생성한다
-	query = "SELECT AB.SNAP_DATE, AB.SNAP_IDX, AB.SNAP_TIME, AB.LATD, AB.LNGD, AB.IMAGE_URL, AB.IMAGE_TYPE, AB.IMAGE_SUB, AB.USER_KEY, AB.NAME, AB.PHOTO, AB.NOTE, AB.LABELS, AB.LIKES, AB.MYLIKE " +
+	query = "SELECT AB.SNAP_DATE, AB.SNAP_IDX, AB.SNAP_TIME, AB.LATD, AB.LNGD, AB.IMAGE_URL, AB.IMAGE_TYPE, AB.IMAGE_SUB, AB.USER_KEY, AB.NAME, AB.PHOTO, AB.NOTE, AB.ADDR, AB.LABELS, AB.LIKES, AB.MYLIKE " +
 			"FROM " +
 			"( " +
 			"	SELECT A.SNAP_DATE, A.SNAP_IDX, DATE_TO_UNIXTIME(A.SNAP_TIME) SNAP_TIME, A.LATD, A.LNGD, A.IMAGE_URL, A.IMAGE_TYPE, A.IMAGE_SUB, A.USER_KEY, B.NAME, B.PHOTO, " +
-			"		   NVL(A.NOTE, ' ') NOTE, " +
+			"		   NVL(A.NOTE, ' ') NOTE, NVL(A.ADDR, '::::::') ADDR, " +
 			"		   (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX) LABELS, " +
 			"          (SELECT count(LABEL_IDX) FROM SNAP_LABEL WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND USER_KEY = '" + userkey + "') MYLABELS, " +
 			"		   (SELECT count(REACTION_IDX) FROM SNAP_REACTION WHERE SNAP_DATE = A.SNAP_DATE AND SNAP_IDX = A.SNAP_IDX AND REACTION_TYPE = 'L') LIKES, " +
@@ -146,7 +146,8 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 								"reactions": map[string]interface{} {
 									"likes":   common.GetInt64FromNumber(lst["LIKES"].(godror.Number)),
 							    	"mylike":  common.GetInt64FromNumber(lst["MYLIKE"].(godror.Number)) },
-								"note":    lst["NOTE"].(string) })
+								"note":    lst["NOTE"].(string),
+								"addr":    lst["ADDR"].(string) })
 	}
 	resBody["list"] = list
 

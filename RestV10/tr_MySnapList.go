@@ -85,7 +85,7 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 내 스냅리스트를 가져온다
-	query := "SELECT SNAP_DATE, SNAP_IDX, DATE_TO_UNIXTIME(SNAP_TIME), LATD, LNGD, IMAGE_URL, IMAGE_TYPE, IMAGE_SUB, NVL(NOTE, ' ') " +
+	query := "SELECT SNAP_DATE, SNAP_IDX, DATE_TO_UNIXTIME(SNAP_TIME), LATD, LNGD, IMAGE_URL, IMAGE_TYPE, IMAGE_SUB, NVL(NOTE, ' '), NVL(ADDR, '::::::') " +
 			 "FROM SNAP " +
 			 "WHERE USER_KEY = '" + userkey + "' " +
 			 "  and UPLOAD_STATUS = 'V' "
@@ -100,12 +100,12 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 
 	var snap_date, snap_idx, snap_time int64
 	var lat, lng float64
-	var image_url, image_type, image_sub, note string
+	var image_url, image_type, image_sub, note, addr string
 	var count int64
 
 	list := make([]map[string]interface{}, 0)
 	for rows.Next() {	
-		err = rows.Scan(&snap_date, &snap_idx, &snap_time, &lat, &lng, &image_url, &image_type, &image_sub, &note)
+		err = rows.Scan(&snap_date, &snap_idx, &snap_time, &lat, &lng, &image_url, &image_type, &image_sub, &note, &addr)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -163,7 +163,8 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 									"caH": labels.Calamity_H}},
 							"reactions": map[string]interface{} {
 								"likes": reactions.Likes},
-							"note": note })
+							"note": note,
+							"addr": addr })
 
 		count++
 		if count >= 30 {

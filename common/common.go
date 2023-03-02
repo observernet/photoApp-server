@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"time"
 	"context"
 	"errors"
@@ -67,7 +68,7 @@ func GetIntTime() (int64) {
 
 func GetLangCode(code string) string {
 
-	if code == "K" { return "kr"; }
+	if code == "K" { return "ko"; }
 	if code == "I" { return "id"; }
 
 	return "en";
@@ -75,7 +76,7 @@ func GetLangCode(code string) string {
 
 func GetLangCode2(code string) string {
 
-	if code == "kr" { return "K"; }
+	if code == "kr" || code == "ko" { return "K"; }
 	if code == "id" { return "I"; }
 
 	return "E";
@@ -243,6 +244,7 @@ func GetUserOBSP(ctx context.Context, db *sql.DB, userkey string) (float64, erro
 
 	return obsp, nil
 }
+
 /*
 func GetTxFeeOBSP(ctx context.Context, db *sql.DB, klay_txfee float64) (float64, float64, int64, float64, int64, error) {
 
@@ -397,6 +399,35 @@ func GetAirdropInfo(rds redis.Conn, key string) (map[string]interface{}, error) 
 	}
 
 	return mapAirdrop[key].(map[string]interface{}), nil
+}
+
+func GetGeoCode(ctx context.Context, db *sql.DB, lng float64, lat float64) (string, error) {
+
+	var grid_xy float64 = 0.0005
+	var grid_lng, grid_lat float64
+
+	var addr_str string
+	var level_0, level_1, level_2, level_3, addr string
+
+	grid_lng = lng - ((float64)((int64)(lng * 10000000) % (int64)(grid_xy * 10000000)) / 10000000.0)
+    grid_lat = lat - ((float64)((int64)(lat * 10000000) % (int64)(grid_xy * 10000000)) / 10000000.0)
+
+	query := "SELECT LEVEL_0, LEVEL_1, LEVEL_2, LEVEL_3, ADDR FROM ADDRESS_WGS84 WHERE LATD = " + fmt.Sprintf("%.4f", grid_lat) + " and LNGD = " + fmt.Sprintf("%.4f", grid_lng)
+	err := db.QueryRowContext(ctx, query).Scan(&level_0, &level_1, &level_2, &level_3, &addr)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			addr_str, err = ADDR_GetAddress(lng, lat)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
+		}
+	} else {
+		addr_str = fmt.Sprintf("%.4f:%.4f:%s:%s:%s:%s:%s", grid_lng, grid_lat, level_0, level_1, level_2, level_3, addr)
+	}
+
+	return addr_str, nil
 }
 
 //func SendCode_Phone(ncode string, phone string, code string) {

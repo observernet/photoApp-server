@@ -22,7 +22,8 @@ func TR_Popup(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 
 	// 팝업 리스트를 가져온다
 	query := "SELECT TITLE, BODY, LANG, IS_VISIBLE " +
-			 "FROM MAIN_POPUP "
+			 "FROM MAIN_POPUP " +
+			 "WHERE LANG = '" + lang + "'"
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		global.FLog.Println(err)
