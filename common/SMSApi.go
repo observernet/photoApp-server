@@ -10,7 +10,10 @@ import (
     "net/http"
 	"net/url"
 	"reflect"
+	"bytes"
 
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 
@@ -33,12 +36,15 @@ func SMSApi_Send(ncode string, phone string, templateId string, code string) (ma
 	} else {
 		msg = "Code [" + code + "]"
 	}*/
-	msg = "OBSERVER [" + code + "] Please enter the authentication code."
+	//msg = "OBSERVER [" + code + "] Please enter the authentication code."
+	msg = "[OBSERVER] verification: " + code
 
 	if ncode == "82" {
 		return _RequestToSMSApi(phone, msg)
+	} else if ncode == "62" {
+		return _RequestToSMSApiOval(phone, msg)
 	} else {
-		return _RequestToSMSApiGabia(ncode + phone, msg)
+		return _RequestToSMSApiNCloud(ncode, phone, msg)
 	}
 	
 	return nil, errors.New("Can not reach!")
@@ -90,6 +96,84 @@ func _RequestToSMSApi(receiver string, msg string) (map[string]interface{}, erro
 	}
 
 	return resData, nil
+}
+
+func _RequestToSMSApiNCloud(ncode string, receiver string, msg string) (map[string]interface{}, error) {
+
+	global.FLog.Println("_RequestToSMSApiNCloud", receiver, msg)
+
+	timestamp := fmt.Sprintf("%d", time.Now().UnixNano() / 1000000)
+
+	method := "POST"
+	url := "https://sens.apigw.ntruss.com"
+	uri := "/sms/v2/services/" + global.Config.APIs.NCloudServiceID + "/messages"
+	signature := _GetNCloudSignature(timestamp, method, uri)
+
+	fmt.Println("--->", timestamp, signature)
+
+	message := make([]map[string]interface{}, 0)
+	message = append(message, map[string]interface{} {"to": receiver})
+
+	reqBody := make(map[string]interface{})
+	reqBody["type"] = "SMS"
+	reqBody["contentType"] = "COMM"
+	reqBody["countryCode"] = ncode
+	reqBody["from"] = global.Config.APIs.NCloudSMSSender
+	reqBody["content"] = msg
+	reqBody["messages"] = message
+	pbytes, _ := json.Marshal(reqBody)
+    buff := bytes.NewBuffer(pbytes)
+
+	fmt.Println("--->", string(pbytes))
+
+	client := &http.Client {
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequest(method, url + uri, buff)
+	if err != nil { return nil, err }
+
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+	req.Header.Add("x-ncp-apigw-timestamp", timestamp)
+	req.Header.Add("x-ncp-iam-access-key", global.Config.APIs.NCloudAccessKey)
+	req.Header.Add("x-ncp-apigw-signature-v2", signature)
+
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	fmt.Println("--->", string(body))
+
+	resData := make(map[string]interface{})	
+	if err = json.Unmarshal(body, &resData); err != nil {
+		return nil, err
+	}
+
+	if resData["error"] != nil {
+		return nil, errors.New("Header Error")
+	}
+
+	if resData["status"] != nil {
+		return nil, errors.New(resData["errorMessage"].(string))
+	}
+
+	if resData["statusCode"] != nil && !strings.EqualFold(resData["statusCode"].(string), "202") {
+		return nil, errors.New(resData["statusCode"].(string) + " " + resData["statusName"].(string))
+	}
+
+	return resData, nil
+}
+
+func _GetNCloudSignature(timestamp string, method string, uri string) (string) {
+
+	message := method + " " + uri + "\n" + timestamp + "\n" + global.Config.APIs.NCloudAccessKey
+
+	mac := hmac.New(sha256.New, []byte(global.Config.APIs.NCloudSecretKey))
+	mac.Write([]byte(message))
+	signature := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+	return signature
 }
 
 func _RequestToSMSApiGabia(receiver string, msg string) (map[string]interface{}, error) {
@@ -184,4 +268,64 @@ func _GetGabiaAccessToken() (string, error) {
 	}
 
 	return resData["access_token"].(string), nil
+}
+
+func _RequestToSMSApiOval(receiver string, msg string) (map[string]interface{}, error) {
+
+	global.FLog.Println("_RequestToSMSApiOval", receiver, msg)
+
+	method := "POST"
+	url := "https://api.ovalsms.com/api/v2/SendSMS"
+
+	reqBody := make(map[string]interface{})
+	reqBody["ApiKey"] = global.Config.APIs.OvalAPIKey
+	reqBody["ClientId"] = global.Config.APIs.OvalClientId
+	reqBody["SenderId"] = global.Config.APIs.OvalSMSSender
+	reqBody["Message"] = msg
+	reqBody["MobileNumbers"] = "62" + receiver
+	pbytes, _ := json.Marshal(reqBody)
+    buff := bytes.NewBuffer(pbytes)
+
+	fmt.Println("Request --->", string(pbytes))
+
+	client := &http.Client {
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequest(method, url, buff)
+	if err != nil { return nil, err }
+
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+
+	fmt.Println("Response --->", string(body))
+
+	resData := make(map[string]interface{})	
+	if err = json.Unmarshal(body, &resData); err != nil {
+		return nil, err
+	}
+
+	if resData["Data"] == nil {
+		return nil, errors.New("Response Error")
+	}
+
+	if len(resData["Data"].([]interface{})) != 1 {
+		return nil, errors.New("Response Error 2")
+	}
+
+	result := resData["Data"].([]interface{})[0].(map[string]interface{})
+
+	if result["MessageErrorCode"] != nil && result["MessageErrorCode"].(float64) > 0 {
+		return nil, errors.New(result["MessageErrorDescription"].(string))
+	}
+
+	if result["MessageId"] == nil || len(result["MessageId"].(string)) == 0 {
+		return nil, errors.New("MessageId not Found")
+	}
+
+	return resData, nil
 }

@@ -50,6 +50,9 @@ func GetErrorMessageKOR(code int) string {
 		case 8030:	return "해당 사용자가 존재하지 않습니다"
 		case 8031:	return "이미 차단한 사용자입니다"
 		case 8032:	return "차단하지 않은 사용자입니다"
+		case 8033:	return "재가입 가능 시간이 되지 않았습니다"
+		case 8034:	return "탈퇴 후 재가입 가능 시간이 되지 않았습니다"
+		case 8035:	return "어뷰징 회원은 재가입 불가능합니다"
 
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"
@@ -67,7 +70,7 @@ func GetErrorMessageKOR(code int) string {
 		case 8202:	return "환전 가능 금액을 초과하였습니다"
 		case 8203:	return "등록 주소가 존재하지 않습니다"
 		case 8204:	return "처리중인 환전 내역이 있습니다. 잠시후에 시도하세요"
-		case 8205:	return "환전 가능 시간이 아닙니다 (00:20 ~ 23:50)"
+		case 8205:	return "환전 가능 시간이 아닙니다"
 		case 8206:	return "입력 주소가 등록되지 않은 주소입니다"
 
 		case 8211:	return "출금 가능 시간이 아닙니다 (00:20 ~ 23:50)"

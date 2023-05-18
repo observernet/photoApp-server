@@ -27,7 +27,7 @@ func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 
 	// check input
 	if reqBody["loginkey"] == nil || reqBody["to"] == nil || reqBody["amount"] == nil { return 9003 }
-	
+
 	// Time Check
 	curtime := common.GetIntTime()
 	if curtime <= 2000 || curtime >= 235000 { return 8205 }

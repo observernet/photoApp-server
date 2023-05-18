@@ -20,6 +20,9 @@ func TR_Version(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 
 	//reqBody := reqData["body"].(map[string]interface{})
 
+	//fmt.Println( common.SMSApi_Send("62", "83819435002", "111", "123456") )
+	//fmt.Println( common.SMSApi_Send("81", "7044967175", "111", "123456") )
+
 	// 버전 정보를 가져온다
 	rkey := global.Config.Service.Name + ":Version"
 	rvalue, err := redis.String(rds.Do("GET", rkey))

@@ -403,7 +403,7 @@ func GetAirdropInfo(rds redis.Conn, key string) (map[string]interface{}, error) 
 
 func GetGeoCode(ctx context.Context, db *sql.DB, lng float64, lat float64) (string, error) {
 
-	var grid_xy float64 = 0.0005
+	var grid_xy float64 = 0.001
 	var grid_lng, grid_lat float64
 
 	var addr_str string

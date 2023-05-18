@@ -93,11 +93,79 @@ func _JoinStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[str
 	}
 
 	var err error
-	var userCount int
+	var query, userKey, userStatus string
+
+	// 현재 계정의 상태를 가져온다
+	query = "SELECT USER_KEY, STATUS FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "' ORDER BY CREATE_TIME desc"
+	if err = db.QueryRowContext(ctx, query).Scan(&userKey, &userStatus); err != nil {
+		if err == sql.ErrNoRows {
+			userStatus = " "
+		} else {
+			global.FLog.Println(err)
+			return 9901
+		}
+	}
+	global.FLog.Println(userKey, userStatus)
+
+	// 현재 회원상태에 따라
+	if userStatus != " " {
+
+		if userStatus == "V" {
+
+			var createTime int64
+			query = "SELECT DATE_TO_UNIXTIME(CREATE_TIME) FROM USER_INFO WHERE USER_KEY = '" + userKey + "'"
+			if err = db.QueryRowContext(ctx, query).Scan(&createTime); err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
+
+			var rejoinTimeout int64
+			query = "SELECT TO_NUMBER(VAR_VALUE) FROM CONFIG_ADMIN_VAR WHERE APP_NAME = 'PhotoApp' and VAR_NAME = 'REJOIN_TIMEOUT_V'"
+			if err = db.QueryRowContext(ctx, query).Scan(&rejoinTimeout); err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
+
+			if (createTime + rejoinTimeout) * 1000 > g_join_time {
+				global.FLog.Println("회원 가입후 일정시간이 지나지 않았습니다", createTime*1000, g_join_time, rejoinTimeout)
+				resBody["rejoin_timeout"] = (createTime + rejoinTimeout) * 1000
+				return 8033
+			}
+
+		} else if userStatus == "C" {
+
+			var closeTime int64
+			query = "SELECT DATE_TO_UNIXTIME(CLOSE_TIME) FROM USER_INFO WHERE USER_KEY = '" + userKey + "'"
+			if err = db.QueryRowContext(ctx, query).Scan(&closeTime); err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
+
+			var rejoinTimeout int64
+			query = "SELECT TO_NUMBER(VAR_VALUE) FROM CONFIG_ADMIN_VAR WHERE APP_NAME = 'PhotoApp' and VAR_NAME = 'REJOIN_TIMEOUT_C'"
+			if err = db.QueryRowContext(ctx, query).Scan(&rejoinTimeout); err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
+
+			if (closeTime + rejoinTimeout) * 1000 > g_join_time {
+				global.FLog.Println("탈퇴 후 일정시간이 지나지 않았습니다", closeTime*1000, g_join_time)
+				resBody["rejoin_timeout"] = (closeTime + rejoinTimeout) * 1000
+				return 8034
+			}
+	
+		} else if userStatus == "A" {
+			global.FLog.Println("회원상태가 어뷰징입니다")
+			return 8035
+		}
+
+	}
 
 	// 이미 존재하는 계정인지 체크한다
 	if reqBody["force"].(bool) == false {
-		query := "SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "' and STATUS <> 'C'"
+
+		var userCount int64
+		query = "SELECT count(USER_KEY) FROM USER_INFO WHERE NCODE = '" + reqBody["ncode"].(string) + "' and PHONE = '" + reqBody["phone"].(string) + "' and STATUS <> 'C'"
 		if err = db.QueryRowContext(ctx, query).Scan(&userCount); err != nil {
 			if err == sql.ErrNoRows {
 				userCount = 0
@@ -108,7 +176,7 @@ func _JoinStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[str
 		}
 
 		if userCount > 0 {
-			global.FLog.Println("이미 가입된 전화번호입니다 [%s:%s]", reqBody["ncode"].(string), reqBody["phone"].(string))
+			global.FLog.Println("이미 가입된 전화번호입니다", reqBody["ncode"].(string), reqBody["phone"].(string))
 			return 8001
 		}
 	}

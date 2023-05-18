@@ -35,8 +35,8 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	reqBody := reqData["body"].(map[string]interface{})
 
 	//!! 프론트 배포후 아래 2라인 삭제
-	if reqBody["note"] == nil { reqBody["note"] = " " }
-	if reqBody["label"] == nil { reqBody["label"] = map[string]interface{} {"rain": " ", "wcondi": " ", "calamity": " "} }
+	//if reqBody["note"] == nil { reqBody["note"] = " " }
+	//if reqBody["label"] == nil { reqBody["label"] = map[string]interface{} {"rain": " ", "wcondi": " ", "calamity": " "} }
 
 	// check input
 	if reqBody["loginkey"] == nil { return 9003 }
@@ -72,6 +72,12 @@ func TR_Snap(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	// 계정 상태 및 로그인 정보를 체크한다
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" { return 8013 }
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
+
+	// 현재 스냅시간을 체크한다
+	iTime := common.GetIntTime()
+	if iTime > 235900 && iTime <= 235959 {
+		return 9002
+	}
 
 	// 이전 스냅타임을 체크한다
 	if (curtime - (int64)(mapUser["stat"].(map[string]interface{})["LAST_SNAP_TIME"].(float64))) < (adminVar.Snap.Interval * 1000) {

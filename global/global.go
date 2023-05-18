@@ -64,6 +64,13 @@ type ServerConfig struct {
 		GabiaSMSUser	string	`json:"gabia_sms_user" binding:"required"`
 		GabiaSMSKey		string	`json:"gabia_sms_key" binding:"required"`
 		GabiaSMSSender	string	`json:"gabia_sms_sender" binding:"required"`
+		NCloudAccessKey	string	`json:"ncloud_access_key" binding:"required"`
+		NCloudSecretKey	string	`json:"ncloud_secret_key" binding:"required"`
+		NCloudServiceID	string	`json:"ncloud_service_id" binding:"required"`
+		NCloudSMSSender	string	`json:"ncloud_sms_sender" binding:"required"`
+		OvalAPIKey		string	`json:"oval_apikey" binding:"required"`
+		OvalClientId	string	`json:"oval_client_id" binding:"required"`
+		OvalSMSSender	string	`json:"oval_sms_sender" binding:"required"`
 	} `json:"apis" binding:"required"`
 }
 
