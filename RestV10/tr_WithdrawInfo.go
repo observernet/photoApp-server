@@ -1,7 +1,8 @@
 package RestV10
 
 import (
-	//"encoding/json"
+	"time"
+	"context"
 	
 	"photoApp-server/global"
 	"photoApp-server/common"
@@ -14,6 +15,9 @@ import (
 // ReqData - 
 // ResData - 
 func TR_WithdrawInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
+
+	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
+	defer cancel()
 
 	userkey := reqData["key"].(string)
 	reqBody := reqData["body"].(map[string]interface{})
@@ -47,7 +51,16 @@ func TR_WithdrawInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, re
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 수수료 면제 티켓을 가져온다
-	fee_free_ticket := 0
+	var fee_free_ticket int64
+	err = db.QueryRowContext(ctx, "SELECT NVL(WTICKET_COUNT, 0) FROM USER_INFO WHERE USER_KEY = '" + userkey + "'").Scan(&fee_free_ticket)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			fee_free_ticket = 0
+		} else {
+			global.FLog.Println(err)
+			return 9901
+		}
+	}
 
 	// 예상 수수료를 계산한다
 	mapFee, err := common.GetTxFee(rds, adminVar.TxFee.Withdraw.Coin, adminVar.TxFee.Withdraw.Fee)

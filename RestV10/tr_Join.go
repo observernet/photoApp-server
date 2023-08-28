@@ -30,6 +30,12 @@ func TR_Join(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData ma
 	if reqBody["step"] == nil || reqBody["ncode"] == nil || reqBody["phone"] == nil { return 9003 }
 	if len(reqBody["ncode"].(string)) == 0 || len(reqBody["phone"].(string)) == 0 { return 9003 }
 	if reqBody["ncode"] != nil && string(reqBody["ncode"].(string)[0]) == "+" { return 9003 }
+	if reqBody["ncode"].(string) == "82" {
+		phone := reqBody["phone"].(string)
+		if phone[:2] != "10" && phone[:3] != "010" {
+			return 9003
+		}
+	}
 
 	// global variable
 	g_join_time = time.Now().UnixNano() / 1000000

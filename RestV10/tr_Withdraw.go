@@ -87,10 +87,26 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	if count_prev_request > 0 { return 8212 }
 
 	// 수수료 면제 티켓을 체크한다
-	if reqBody["fee_ticket"] != nil && reqBody["fee_ticket"].(bool) == true {
-		global.FLog.Println("수수료 면제 티켓이 없습니다")
-		return 8201
+	//if reqBody["fee_ticket"] != nil && reqBody["fee_ticket"].(bool) == true {
+	//	global.FLog.Println("수수료 면제 티켓이 없습니다")
+	//	return 8201
+	//}
+
+	// 수수료 면제 티켓을 가져온다
+	var fee_free_ticket int64
+	err = db.QueryRowContext(ctx, "SELECT NVL(WTICKET_COUNT, 0) FROM USER_INFO WHERE USER_KEY = '" + userkey + "'").Scan(&fee_free_ticket)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			fee_free_ticket = 0
+		} else {
+			global.FLog.Println(err)
+			return 9901
+		}
 	}
+
+	// 수수료 면제여부를 결정한다
+	var is_fee_free bool = false
+	if fee_free_ticket > 0 { is_fee_free = true }
 
 	// OBSR 잔액을 가져온다
 	balance, err := common.KAS_GetBalanceOf(userkey, reqBody["from"].(string), wallet_type)
@@ -101,12 +117,17 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 	obsr := common.GetFloat64FromString(balance)
 
 	// 예상 수수료를 계산한다
-	mapFee, err := common.GetTxFee(rds, adminVar.TxFee.Withdraw.Coin, adminVar.TxFee.Withdraw.Fee)
-	if err != nil {
-		global.FLog.Println(err)
-		return 9901
+	var txfee float64
+	if is_fee_free == true {
+		txfee = 0
+	} else {
+		mapFee, err := common.GetTxFee(rds, adminVar.TxFee.Withdraw.Coin, adminVar.TxFee.Withdraw.Fee)
+		if err != nil {
+			global.FLog.Println(err)
+			return 9901
+		}
+		txfee = mapFee["txfee"].(float64)
 	}
-	txfee := mapFee["txfee"].(float64)
 
 	// 출금가능금액을 체크한다
 	if (reqBody["amount"].(float64) + txfee) > obsr {
@@ -141,16 +162,25 @@ func TR_Withdraw(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 			return 9901
 		}
 
-		// KASConn에 수수료 출금을 요청한다
-		kas, err = common.KAS_Transfer("F:" + userkey, reqBody["from"].(string), adminVar.Wallet.Withdraw.Address, fmt.Sprintf("%f", txfee), wallet_type, wallet_cert)
-		if err == nil {
-			if err = json.Unmarshal([]byte(kas), &mapKAS); err == nil {
-				global.FLog.Println(mapKAS)
+		if is_fee_free == true {
+			// 출금티켓을 감소한다
+			_, err = db.ExecContext(ctx, "UPDATE USER_INFO SET WTICKET_COUNT = WTICKET_COUNT - 1 WHERE USER_KEY = '" + userkey + "'")
+			if err != nil {
+				global.FLog.Println(err)
+				return 9901
+			}
+		} else {
+			// KASConn에 수수료 출금을 요청한다
+			kas, err = common.KAS_Transfer("F:" + userkey, reqBody["from"].(string), adminVar.Wallet.Withdraw.Address, fmt.Sprintf("%f", txfee), wallet_type, wallet_cert)
+			if err == nil {
+				if err = json.Unmarshal([]byte(kas), &mapKAS); err == nil {
+					global.FLog.Println(mapKAS)
+				} else {
+					global.FLog.Println(err)
+				}
 			} else {
 				global.FLog.Println(err)
 			}
-		} else {
-			global.FLog.Println(err)
 		}
 	} else {
 
