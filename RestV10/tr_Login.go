@@ -71,6 +71,7 @@ func TR_Login(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 	return res_code
 }
 
+//
 // ReqData - step: 1
 //         - type: Request Type (phone, email)
 //         - ncode: type == phone, 국가코드

@@ -70,6 +70,7 @@ func TR_FcmUpdate(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDa
 		}
 	}
 	
+	
 	// 응답값을 세팅한다
 	resBody["ok"] = true
 

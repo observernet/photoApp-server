@@ -28,7 +28,6 @@ func TR_AdReword(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 
 	//////////////////////////////////////////
 	// 여기서 변수 범위값을 체크하자
-	//////////////////////////////////////////
 
 	var err error
 
