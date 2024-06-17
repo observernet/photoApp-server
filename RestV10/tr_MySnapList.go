@@ -41,6 +41,10 @@ type _MySnapList_Labels struct {
 	Calamity_B			int64
 	Calamity_A			int64
 	Calamity_H			int64
+	Accuse_C			int64
+	Accuse_F			int64
+	Accuse_Q			int64
+	Accuse_V			int64
 }
 
 type _MySnapList_Reactions struct {
@@ -85,8 +89,9 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
 
 	// 내 스냅리스트를 가져온다
-	query := "SELECT SNAP_DATE, SNAP_IDX, DATE_TO_UNIXTIME(SNAP_TIME), LATD, LNGD, IMAGE_URL, IMAGE_TYPE, IMAGE_SUB, NVL(NOTE, ' '), NVL(ADDR, '::::::') " +
-			 "FROM SNAP " +
+	query := "SELECT SNAP_DATE, SNAP_IDX, DATE_TO_UNIXTIME(SNAP_TIME), LATD, LNGD, IMAGE_URL, IMAGE_TYPE, IMAGE_SUB, NVL(NOTE, ' '), NVL(ADDR, '::::::'), " +
+			 "      (SELECT COUNT(*) FROM SNAP_ACCUSE WHERE SNAP_DATE = A.SNAP_DATE and SNAP_IDX = A.SNAP_IDX and PASS_TYPE = 'Y') " +
+			 "FROM SNAP A " +
 			 "WHERE USER_KEY = '" + userkey + "' " +
 			 "  and UPLOAD_STATUS = 'V' "
 	if reqBody["next"] != nil && len(reqBody["next"].(string)) > 1 { query = query + "  and SNAP_DATE * 1000000 + SNAP_IDX < '" + reqBody["next"].(string) + "'" }
@@ -101,11 +106,11 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 	var snap_date, snap_idx, snap_time int64
 	var lat, lng float64
 	var image_url, image_type, image_sub, note, addr string
-	var count int64
+	var accuse_count, count int64
 
 	list := make([]map[string]interface{}, 0)
 	for rows.Next() {	
-		err = rows.Scan(&snap_date, &snap_idx, &snap_time, &lat, &lng, &image_url, &image_type, &image_sub, &note, &addr)
+		err = rows.Scan(&snap_date, &snap_idx, &snap_time, &lat, &lng, &image_url, &image_type, &image_sub, &note, &addr, &accuse_count)
 		if err != nil {
 			global.FLog.Println(err)
 			return 9901
@@ -160,11 +165,18 @@ func TR_MySnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqD
 									"caW": labels.Calamity_W,
 									"caB": labels.Calamity_B,
 									"caA": labels.Calamity_A,
-									"caH": labels.Calamity_H}},
+									"caH": labels.Calamity_H},
+								"accuse": map[string]interface{} {
+										"acC": labels.Accuse_C,
+										"acF": labels.Accuse_F,
+										"acQ": labels.Accuse_Q,
+										"acV": labels.Accuse_V}},
 							"reactions": map[string]interface{} {
 								"likes": reactions.Likes},
 							"note": note,
-							"addr": addr })
+							"addr": addr,
+							"accuse_pass": accuse_count,
+					})
 
 		count++
 		if count >= 30 {
@@ -182,7 +194,7 @@ func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, sna
 	var err error
 	var labels _MySnapList_Labels
 
-	query := "SELECT STATUS, SKY, RAIN, WCONDI, CALAMITY, IS_ETC " +
+	query := "SELECT STATUS, SKY, RAIN, WCONDI, CALAMITY, IS_ETC, NVL(ACCUSE, ' ') " +
 			 "FROM SNAP_LABEL " +
 			 "WHERE SNAP_DATE = " + fmt.Sprintf("%d", snap_date) +
 			 "  and SNAP_IDX = " + fmt.Sprintf("%d", snap_idx)
@@ -190,9 +202,9 @@ func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, sna
 	if err != nil { return labels, err }
 	defer rows.Close()
 
-	var status, sky, rain, wcondi, calamity, is_etc string
+	var status, sky, rain, wcondi, calamity, is_etc, accuse string
 	for rows.Next() {	
-		err = rows.Scan(&status, &sky, &rain, &wcondi, &calamity, &is_etc)
+		err = rows.Scan(&status, &sky, &rain, &wcondi, &calamity, &is_etc, &accuse)
 		if err != nil { return labels, err }
 
 		if status == "0" { labels.Status_0++ }
@@ -225,6 +237,11 @@ func _MySnapList_GetLabels(ctx context.Context, db *sql.DB, snap_date int64, sna
 			if calamity == "A" { labels.Calamity_A++ }
 			if calamity == "H" { labels.Calamity_H++ }
 		}
+
+		if accuse == "C" { labels.Accuse_C++ }
+		if accuse == "F" { labels.Accuse_F++ }
+		if accuse == "Q" { labels.Accuse_Q++ }
+		if accuse == "V" { labels.Accuse_V++ }
 	}
 
 	return labels, nil

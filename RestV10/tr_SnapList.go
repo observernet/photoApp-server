@@ -51,6 +51,7 @@ func TR_SnapList(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		return 9901
 	}
 
+
 	// 계정 상태 및 로그인 정보를 체크한다
 	if mapUser["info"].(map[string]interface{})["STATUS"].(string) != "V" { return 8013 }
 	if mapUser["login"].(map[string]interface{})["loginkey"].(string) != reqBody["loginkey"].(string) { return 8014 }
