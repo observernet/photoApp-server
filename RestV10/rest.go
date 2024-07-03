@@ -111,6 +111,9 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 		case "userblock": res_code = TR_UserBlock(c, db, rds, lang, reqData, resBody)
 		case "userblock_clear": res_code = TR_UserBlockClear(c, db, rds, lang, reqData, resBody)
 		case "userblock_list": res_code = TR_UserBlockList(c, db, rds, lang, reqData, resBody)
+		case "DS_login": res_code = TR_DSLogin(c, db, rds, lang, reqData, resBody)
+		case "DS_login_info": res_code = TR_DSLoginInfo(c, db, rds, lang, reqData, resBody)
+		case "DS_logout": res_code = TR_DSLogout(c, db, rds, lang, reqData, resBody)
 		default:
 			global.FLog.Println("정의되지 않은 TR:", reqData["trid"])
 			res_code = 9004
