@@ -114,6 +114,8 @@ func ProcRestV10(c *gin.Context, db *sql.DB, rdp *redis.Pool) {
 		case "DS_login": res_code = TR_DSLogin(c, db, rds, lang, reqData, resBody)
 		case "DS_login_info": res_code = TR_DSLoginInfo(c, db, rds, lang, reqData, resBody)
 		case "DS_logout": res_code = TR_DSLogout(c, db, rds, lang, reqData, resBody)
+		case "DS_agree": res_code = TR_DSAgree(c, db, rds, lang, reqData, resBody)
+		case "DS_join": res_code = TR_DSJoin(c, db, rds, lang, reqData, resBody)
 		default:
 			global.FLog.Println("정의되지 않은 TR:", reqData["trid"])
 			res_code = 9004
@@ -146,6 +148,7 @@ func CheckHeader(header global.HeaderParameter, reqdata string) int {
 
 	// Check Access Key
 	if header.XAccess != global.Config.Service.APIKey {
+		global.FLog.Println("Header Key Error", header)
 		return 9001
 	}
 

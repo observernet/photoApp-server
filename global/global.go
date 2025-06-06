@@ -150,6 +150,9 @@ const ConfigFile string = "config/photoApp.json"
 // OBSR Decimal Point
 const OBSR_PDesz int = 8
 
+// Communication Class
+const Comm_DataStore string = "DataStore"
+
 // Send Code
 const SendCodeExpireSecs int = 120
 const SendCodeMaxErrors int = 5
@@ -163,4 +166,3 @@ const DBContextTimeout time.Duration = 5
 // Global Variable
 var Config ServerConfig
 var FLog *log.Logger
-

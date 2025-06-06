@@ -54,6 +54,9 @@ func GetErrorMessageKOR(code int) string {
 		case 8034:	return "탈퇴 후 재가입 가능 시간이 되지 않았습니다"
 		case 8035:	return "어뷰징 회원은 재가입 불가능합니다"
 
+		case 8041:	return "데이타 스토어 약관 동의가 필요합니다"
+		case 8042:	return "이미 약관 동의가 되어 있습니다"
+
 		case 8101:	return "스냅 이력이 존재합니다"
 		case 8102:	return "먼저 스냅한 사용자가 존재합니다"
 		case 8103:	return "라벨이 부족합니다"
@@ -85,6 +88,7 @@ func GetErrorMessageKOR(code int) string {
 		case 9002:	return "요청이 만료되었습니다"
 		case 9003:	return "요청 데이타 오류"
 		case 9004:	return "정의되지 않은 요청"
+		case 9005:	return "올바르지 않은 통신구분입니다"
 
 		case 9901:	return "시스템 오류"
 		case 9902:	return "잘못된 접근입니다"

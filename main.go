@@ -75,6 +75,8 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 	}
 	s.ListenAndServeTLS(global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
+	//s.ListenAndServe()
+
 	//router.RunTLS(global.Config.WWW.HttpHost, global.Config.WWW.HttpSSLChain, global.Config.WWW.HttpSSLPrivKey)
 }
 

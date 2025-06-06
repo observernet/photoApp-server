@@ -22,6 +22,10 @@ func TR_DSLogin(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
 	defer cancel()
 
+	// Check Header
+	if reqData["comm"] == nil || reqData["comm"].(string) != global.Comm_DataStore {
+		return 9005
+	}
 	reqBody := reqData["body"].(map[string]interface{})
 	
 	// check input
@@ -32,11 +36,11 @@ func TR_DSLogin(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 	if reqBody["type"].(string) == "phone" && reqBody["ncode"] != nil && string(reqBody["ncode"].(string)[0]) == "+" { return 9003 }
 
 	// Global 변수값을 세팅한다
-	g_login_curtime = time.Now().UnixNano() / 1000000
+	g_DSlogin_curtime = time.Now().UnixNano() / 1000000
 	if reqBody["type"].(string) == "phone" {
-		g_login_hashkey = common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
+		g_DSlogin_hashkey = common.GetPhoneNumber(reqBody["ncode"].(string), reqBody["phone"].(string))
 	} else {
-		g_login_hashkey = reqBody["email"].(string)
+		g_DSlogin_hashkey = reqBody["email"].(string)
 	}
 
 	var err error
@@ -44,7 +48,7 @@ func TR_DSLogin(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData
 	var loginInfo map[string]interface{}
 
 	// Redis에서 캐싱값을 가져온다
-	if rvalue, err = redis.String(rds.Do("HGET", "DataStore:SendCode:Login", g_login_hashkey)); err != nil {
+	if rvalue, err = redis.String(rds.Do("HGET", "DataStore:SendCode:Login", g_DSlogin_hashkey)); err != nil {
 		if err != redis.ErrNil {
 			global.FLog.Println(err)
 			return 9901
@@ -86,27 +90,33 @@ func _DSLoginStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 	// 인증번호 5회 이상 실패인지 확인한다
 	if loginInfo != nil && loginInfo["block_time"] != nil {
 		blockTime := (int64)(loginInfo["block_time"].(float64))
-		if g_login_curtime <= blockTime {
+		if g_DSlogin_curtime <= blockTime {
 			resBody["limit_time"] = blockTime
 			return 8005
 		}
 	}
 
+	// 에러카운트가 있으면 가져온다
+	var errorCount int
+	if loginInfo != nil && loginInfo["errcnt"] != nil {
+		errorCount = (int)(loginInfo["errcnt"].(float64))
+	}
+
 	var err error
 	var stmt *sql.Stmt
 	var query string
-	var userkey, status, reason string
+	var userkey, status, reason, agree string
 
 	// 계정정보를 가져온다
 	if reqBody["type"].(string) == "phone" {
-		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
+		query = "SELECT USER_KEY, STATUS, ABUSE_REASON, NVL(DATASTORE_AGREE, 'N') FROM USER_INFO WHERE NCODE = :1 and PHONE = :2 and STATUS <> 'C'";
 		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
 		defer stmt.Close()
 
-		if err = stmt.QueryRow(reqBody["ncode"].(string), reqBody["phone"].(string)).Scan(&userkey, &status, &reason); err != nil {
+		if err = stmt.QueryRow(reqBody["ncode"].(string), reqBody["phone"].(string)).Scan(&userkey, &status, &reason, &agree); err != nil {
 			if err == sql.ErrNoRows {
 				return 8010
 			} else {
@@ -115,14 +125,14 @@ func _DSLoginStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 			}
 		}
 	} else {
-		query = "SELECT USER_KEY, STATUS, ABUSE_REASON FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
+		query = "SELECT USER_KEY, STATUS, ABUSE_REASON, NVL(DATASTORE_AGREE, 'N') FROM USER_INFO WHERE EMAIL = :1 and STATUS <> 'C'";
 		if stmt, err = db.PrepareContext(ctx, query); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
 		defer stmt.Close()
 
-		if err = stmt.QueryRow(reqBody["email"].(string)).Scan(&userkey, &status, &reason); err != nil {
+		if err = stmt.QueryRow(reqBody["email"].(string)).Scan(&userkey, &status, &reason, &agree); err != nil {
 			if err == sql.ErrNoRows {
 				return 8010
 			} else {
@@ -130,6 +140,11 @@ func _DSLoginStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 				return 9901
 			}
 		}
+	}
+
+	// 데이타스토어 동의 여부를 체크한다
+	if agree != "Y" {
+		return 8041
 	}
 
 	// 계정 상태에 따라
@@ -144,37 +159,23 @@ func _DSLoginStep1(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 
 	// 인증코드를 생성한다
 	code := common.GetCodeNumber(6)
-	if reqBody["type"].(string) == "phone" && reqBody["phone"].(string) == "000012340000567" {
-		code = "123456"
-	}
-	if reqBody["type"].(string) == "email" && reqBody["email"].(string) == "obsrapptest@obsr.org" {
-		code = "123456"
-	}
-
-	// 에러카운트가 있으면 가져온다
-	var errorCount int
-	if loginInfo != nil && loginInfo["errcnt"] != nil {
-		errorCount = (int)(loginInfo["errcnt"].(float64))
-	}
 
 	// Redis에 캐싱값을 기록한다
-	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_login_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "userkey": userkey}
+	mapV := map[string]interface{} {"step": "1", "code": code, "expire": g_DSlogin_curtime + (int64)(global.SendCodeExpireSecs * 1000), "errcnt": errorCount, "userkey": userkey}
 	jsonStr, _ := json.Marshal(mapV)
-	if _, err = rds.Do("HSET", "DataStore:SendCode:Login", g_login_hashkey, jsonStr); err != nil {
+	if _, err := rds.Do("HSET", "DataStore:SendCode:Login", g_DSlogin_hashkey, jsonStr); err != nil {
 		global.FLog.Println(err)
 		return 9901
 	}
 
 	// 인증코드를 전송한다
 	if reqBody["type"].(string) == "phone" {
-		if reqBody["phone"].(string) != "000012340000567" {
-			//if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "Login", code); err != nil {
-			//	global.FLog.Println(err)
-			//	return 9901
-			//}
-		}
+		//if _, err = common.SMSApi_Send(reqBody["ncode"].(string), reqBody["phone"].(string), "Login", code); err != nil {
+		//	global.FLog.Println(err)
+		//	return 9901
+		//}
 	} else {
-		if _, err = common.MailApi_SendMail(reqBody["email"].(string), "Login", code); err != nil {
+		if _, err := common.MailApi_SendMail(reqBody["email"].(string), "Login", code); err != nil {
 			global.FLog.Println(err)
 			return 9901
 		}
@@ -208,7 +209,7 @@ func _DSLoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 	if loginInfo["code"] == nil || loginInfo["expire"] == nil { return 9902 }
 
 	// 타임아웃을 체크
-	if g_login_curtime > (int64)(loginInfo["expire"].(float64)) { return 8007 }
+	if g_DSlogin_curtime > (int64)(loginInfo["expire"].(float64)) { return 8007 }
 
 	var err error
 	var rvalue string
@@ -222,7 +223,7 @@ func _DSLoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 		if errorCount < global.SendCodeMaxErrors {  // 오류횟수가 최대허용횟수 미만이라면
 			loginInfo["errcnt"] = errorCount
 			jsonStr, _ = json.Marshal(loginInfo)
-			if _, err = rds.Do("HSET", "DataStore:SendCode:Login", g_login_hashkey, jsonStr); err != nil {
+			if _, err = rds.Do("HSET", "DataStore:SendCode:Login", g_DSlogin_hashkey, jsonStr); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -232,9 +233,9 @@ func _DSLoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 			return 8008
 
 		} else {		// 오류횟수가 최대허용횟수 이상이라면
-			blockTime := g_login_curtime + (int64)(global.SendCodeBlockSecs * 1000)
+			blockTime := g_DSlogin_curtime + (int64)(global.SendCodeBlockSecs * 1000)
 			rvalue = `{"block_time": ` + strconv.FormatInt(blockTime, 10) + `}`
-			if _, err = rds.Do("HSET", "DataStore:SendCode:Login", g_login_hashkey, rvalue); err != nil {
+			if _, err = rds.Do("HSET", "DataStore:SendCode:Login", g_DSlogin_hashkey, rvalue); err != nil {
 				global.FLog.Println(err)
 				return 9901
 			}
@@ -244,6 +245,12 @@ func _DSLoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 			resBody["limit_time"] = blockTime
 			return 8005
 		}
+	}
+
+	// 캐시 정보는 삭제한다
+	if _, err = rds.Do("HDEL", "DataStore:SendCode:Login", g_DSlogin_hashkey); err != nil {
+		global.FLog.Println(err)
+		return 9901
 	}
 
 	// 로그인을 처리한
@@ -262,15 +269,8 @@ func _DSLoginStep2(ctx context.Context, db *sql.DB, rds redis.Conn, reqBody map[
 
 	// 응답값을 세팅한다
 	resBody["userkey"] = mapUser["userkey"].(string)
-	resBody["loginkey"] = mapUser["loginkey"].(string)
 	resBody["info"] = mapUser["info"].(map[string]interface{})
 	resBody["wallet"] = mapUser["wallet"].([]map[string]interface{})
-	
-	// 캐시 정보는 삭제한다
-	if _, err = rds.Do("HDEL", "DataStore:SendCode:Login", g_login_hashkey); err != nil {
-		global.FLog.Println(err)
-		return 9901
-	}
 
 	return 0
 }

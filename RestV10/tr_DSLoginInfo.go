@@ -21,18 +21,22 @@ func TR_DSLoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, req
 	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
 	defer cancel()
 
+	// Check Header
+	if reqData["comm"] == nil || reqData["comm"].(string) != global.Comm_DataStore {
+		return 9005
+	}
 	userkey := reqData["key"].(string)
-	reqBody := reqData["body"].(map[string]interface{})
+	//reqBody := reqData["body"].(map[string]interface{})
 	
 	// check input
-	if reqBody["loginkey"] == nil { return 9003 }
+	//if reqBody["loginkey"] == nil { return 9003 }
 	//curtime := time.Now().UnixNano() / 1000000
 
 	var err error
 
 	// 로그인 정보를 가져온다
-	var mapLogin map[string]interface{}
-	if mapLogin, err = common.DSUser_GetLoginInfo(rds, userkey); err != nil {
+	//var mapLogin map[string]interface{}
+	if _, err = common.DSUser_GetLoginInfo(rds, userkey); err != nil {
 		if err == redis.ErrNil {
 			return 8015
 		} else {
@@ -42,9 +46,9 @@ func TR_DSLoginInfo(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, req
 	}
 
 	// 로그인정보가 일치하는지 체크
-	if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) {
-		return 8014
-	}
+	//if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) {
+	//	return 8014
+	//}
 
 	// 사용자 정보를 가져온다
 	var mapUser map[string]interface{}

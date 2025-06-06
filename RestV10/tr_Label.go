@@ -55,6 +55,7 @@ func TR_Label(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData m
 		}
 	}
 
+
 	// 관리자 정의변수를 가져온다
 	var adminVar global.AdminConfig
 	if adminVar, err = common.GetAdminVar(rds); err != nil {

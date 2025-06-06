@@ -13,17 +13,18 @@ import (
 // ResData - nodata: 리턴정보 없음
 func TR_DSLogout(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
+	// Check Header
+	if reqData["comm"] == nil || reqData["comm"].(string) != global.Comm_DataStore {
+		return 9005
+	}
 	userkey := reqData["key"].(string)
-	reqBody := reqData["body"].(map[string]interface{})
-	
-	// check input
-	if reqBody["loginkey"] == nil { return 9003 }
+	//reqBody := reqData["body"].(map[string]interface{})
 	
 	var err error
 
 	// 로그인 정보를 가져온다
-	var mapLogin map[string]interface{}
-	if mapLogin, err = common.DSUser_GetLoginInfo(rds, userkey); err != nil {
+	//var mapLogin map[string]interface{}
+	if _, err = common.DSUser_GetLoginInfo(rds, userkey); err != nil {
 		if err == redis.ErrNil {
 			return 8015
 		} else {
@@ -32,11 +33,6 @@ func TR_DSLogout(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqDat
 		}
 	}
 
-	// 로그인정보가 일치하는지 체크
-	if mapLogin["loginkey"].(string) != reqBody["loginkey"].(string) {
-		return 8014
-	}
-	
 	// 로그아웃을 처리한다
 	if err = common.DSUser_Logout(rds, userkey); err != nil {
 		global.FLog.Println(err)
