@@ -15,8 +15,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-// ReqData - 
-// ResData - 
 func TR_Exchange(c *gin.Context, db *sql.DB, rds redis.Conn, lang string, reqData map[string]interface{}, resBody map[string]interface{}) int {
 
 	ctx, cancel := context.WithTimeout(c, global.DBContextTimeout * time.Second)
