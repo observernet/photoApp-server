@@ -61,7 +61,7 @@ func DSUser_GetInfo(ctx context.Context, db *sql.DB, rds redis.Conn, userkey str
 			return nil, err
 		}
 	}
-
+	
 	// Fetch User Info (From DB)
 	var ncode, phone, email, name, promotion, lang string
 	var level int64

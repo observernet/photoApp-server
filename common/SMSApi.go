@@ -37,6 +37,7 @@ func SMSApi_Send(ncode string, phone string, templateId string, code string) (ma
 		msg = "Code [" + code + "]"
 	}*/
 	//msg = "OBSERVER [" + code + "] Please enter the authentication code."
+	
 	msg = "[OBSERVER] verification: " + code
 
 	if ncode == "82" {

@@ -46,7 +46,7 @@ func User_GetInfo(rds redis.Conn, userkey string, hashkey ...string) (map[string
 			mapUser[hkey] = mapData
 		}
 	}
-
+	
 	return mapUser, nil
 }
 

@@ -63,6 +63,6 @@ func _RequestToMailApi(trid string, params []string) (map[string]interface {}, e
 	if resData["code"].(float64) != 0 {
 		return nil, errors.New(resData["msg"].(string))
 	}
-
+	
 	return resData, nil
 }

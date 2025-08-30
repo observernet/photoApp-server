@@ -51,7 +51,6 @@ func _SendEventToMQTTPusher(topic string, message string) (error) {
 }
 
 func _ConnectMQTTPusher() (error) {
-
 	var err error
 
 	// 서버에 연결한다

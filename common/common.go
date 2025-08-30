@@ -344,7 +344,7 @@ func GetTxFee(rds redis.Conn, coin string, fee float64) (map[string]interface{},
 }
 
 func GetCoinPrice(db *sql.DB, coin string) {
-
+	
 }
 
 func CheckForbiddenWord(ctx context.Context, db *sql.DB, ftype string, word string) (bool, error) {
